@@ -5,6 +5,9 @@
   "peerDependencies": {
     "typescript": "^5.0.0"
   },
+  "scripts": {
+    "test": "vitest"
+  },
   "dependencies": {
     "@langchain/core": "^0.3.40",
     "@langchain/openai": "^0.4.4",
@@ -13,8 +16,9 @@
     "uuid": "^11.1.0"
   },
   "devDependencies": {
-    "@types/node": "^22.13.5",
     "@types/express": "^5.0.0",
-    "@types/multer": "^1.4.12"
+    "@types/multer": "^1.4.12",
+    "@types/node": "^22.13.5",
+    "vitest": "^3.0.6"
   }
 }
