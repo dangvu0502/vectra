@@ -3,30 +3,51 @@ import fs from 'fs/promises';
 import type { Express } from 'express';
 import express from 'express';
 import type { Server } from 'http';
-import { createDocumentStorage } from '../storage';
-import { createDocumentService } from '../services';
-import { createDocumentRouter } from '../routes';
+import { createDocumentStorage } from '../../storage';
+import { createDocumentService } from '../../services';
+import { createDocumentRouter } from '../../routes';
 
 export const TEST_PORT = 3000;
 export const BASE_URL = `http://localhost:${TEST_PORT}`;
 export const FIXTURES_DIR = path.join(__dirname, 'fixtures');
 export const UPLOADS_DIR = path.join(__dirname, '..', 'uploads');
 
+let globalServer: Server | null = null;
+let globalApp: Express | null = null;
+
 export const createTestApp = () => {
-    const app = express();
+  if (!globalApp) {
+    globalApp = express();
     const storage = createDocumentStorage();
     const service = createDocumentService(storage);
     const router = createDocumentRouter(service);
 
-    app.use('/documents', router);
-    return app;
+    globalApp.use('/documents', router);
+  }
+  return globalApp;
 };
 
 export async function setupTestServer() {
-  const app = createTestApp();
-  const server = await startServer(app);
-  await setupDirectories();
-  return { app, server };
+  if (!globalServer) {
+    const app = createTestApp();
+    globalServer = await startServer(app);
+    await setupDirectories();
+  }
+  return globalServer;
+}
+
+export async function cleanupServer() {
+  if (globalServer) {
+    await Promise.race([
+      new Promise<void>((resolve) => globalServer?.close(() => resolve())),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Server shutdown timeout')), 5000)
+      )
+    ]);
+    globalServer = null;
+    globalApp = null;
+  }
+  await cleanupDirectories();
 }
 
 export async function createTestFile(content = 'Test content') {
@@ -41,16 +62,6 @@ export async function createFormData(filePath: string) {
   const file = new Blob([content], { type: 'text/plain' });
   formData.append('file', file, path.basename(filePath));
   return formData;
-}
-
-export async function cleanupServer(server: Server) {
-  await Promise.race([
-    new Promise<void>((resolve) => server?.close(() => resolve())),
-    new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Server shutdown timeout')), 5000)
-    )
-  ]);
-  await cleanupDirectories();
 }
 
 async function startServer(app: Express): Promise<Server> {
