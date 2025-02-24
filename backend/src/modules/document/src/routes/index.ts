@@ -1,15 +1,12 @@
 import { Router } from 'express';
-import { createDeleteRouter } from './delete.route';
-import { createSearchRouter } from './search.route';
-import { createUploadRouter } from './upload.route';
-import type { DocumentService } from '../services';
+import uploadRouter from './upload';
+import searchRouter from './search';
+import deleteRouter from './delete';
 
-export function createDocumentRouter(service: DocumentService) {
-  const router = Router();
-  
-  router.use('/upload', createUploadRouter(service));
-  router.use('/search', createSearchRouter(service));
-  router.use('/', createDeleteRouter(service));
+const router = Router();
 
-  return router;
-}
+router.use('/upload', uploadRouter);
+router.use('/search', searchRouter);
+router.use('/', deleteRouter);
+
+export default router;

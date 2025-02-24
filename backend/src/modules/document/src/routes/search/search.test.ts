@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
-import { setupTestServer, cleanupServer, createTestFile, createFormData, BASE_URL } from '../utils.ts/__tests__';
+import { setupTestServer, cleanupServer, createTestFile, createFormData, BASE_URL } from '../../utils.ts/__tests__';
 
 describe('Search Route', () => {
     let testFilePath: string;

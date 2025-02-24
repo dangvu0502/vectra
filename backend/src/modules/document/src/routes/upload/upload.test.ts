@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
-import { setupTestServer, cleanupServer, createTestFile, createFormData, BASE_URL } from '../utils.ts/__tests__';
-import type { Server } from 'http';
+import { setupTestServer, cleanupServer, createTestFile, createFormData, BASE_URL } from '../../utils.ts/__tests__';
 
 describe('Upload Route', () => {
     let testFilePath: string;

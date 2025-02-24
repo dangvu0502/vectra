@@ -3,9 +3,7 @@ import fs from 'fs/promises';
 import type { Express } from 'express';
 import express from 'express';
 import type { Server } from 'http';
-import { createDocumentStorage } from '../../storage';
-import { createDocumentService } from '../../services';
-import { createDocumentRouter } from '../../routes';
+import router from '../../routes';
 
 export const TEST_PORT = 3000;
 export const BASE_URL = `http://localhost:${TEST_PORT}`;
@@ -18,9 +16,6 @@ let globalApp: Express | null = null;
 export const createTestApp = () => {
   if (!globalApp) {
     globalApp = express();
-    const storage = createDocumentStorage();
-    const service = createDocumentService(storage);
-    const router = createDocumentRouter(service);
 
     globalApp.use('/documents', router);
   }
