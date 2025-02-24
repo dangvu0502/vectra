@@ -5,6 +5,6 @@ import { withStorage } from '../../middleware/storage';
 const router = Router();
 
 router.use(withStorage);
-router.get('/', () => {searchController});
+router.get('/', searchController);  
 
 export default router;
