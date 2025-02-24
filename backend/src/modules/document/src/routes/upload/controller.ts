@@ -1,7 +1,13 @@
 import type { Request, Response } from 'express';
 import { uploadDocument } from './service';
 
-export async function uploadController(req: Request, res: Response) {
+type UploadResponse = {
+  status: 'success' | 'error';
+  data?: Document;
+  message?: string;
+}
+
+export async function uploadController(req: Request, res: Response): Promise<Response<UploadResponse>> {
   if (!req.file) {
     return res.status(400).json({
       status: 'error',

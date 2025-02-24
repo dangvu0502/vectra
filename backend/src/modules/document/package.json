@@ -11,8 +11,8 @@
   "dependencies": {
     "@langchain/core": "^0.3.40",
     "@langchain/openai": "^0.4.4",
-    "express": "^4.21.2",
-    "multer": "1.4.5-lts.1",
+    "express": "^5.0.1",
+    "multer": "1.4.4-lts.1",
     "uuid": "^11.1.0"
   },
   "devDependencies": {

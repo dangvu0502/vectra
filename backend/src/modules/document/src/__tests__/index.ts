@@ -20,7 +20,6 @@ let globalApp: Express | null = null;
 export const createTestApp = () => {
   if (!globalApp) {
     globalApp = express();
-    globalApp.use(withStorage);
     globalApp.use('/documents', router);
   }
   return globalApp;

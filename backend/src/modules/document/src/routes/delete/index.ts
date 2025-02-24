@@ -1,10 +1,9 @@
-import { Router, type Request, type Response } from 'express';
+import { Router } from 'express';
 import { deleteController } from './controller';
-import { withStorage } from '../../middleware/storage';
 
 const router = Router();
-
-router.use(withStorage);
-router.delete('/:id', deleteController);
+router.delete('/:id', (req, res) => {
+    deleteController(req, res)
+});
 
 export default router;

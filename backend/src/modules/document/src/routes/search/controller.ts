@@ -1,7 +1,13 @@
 import type { Request, Response } from 'express';
 import { searchDocuments } from './service';
 
-export async function searchController(req: Request, res: Response) {
+type SearchResponse = {
+  status: 'success' | 'error';
+  data?: Document[];
+  message?: string;
+}
+
+export async function searchController(req: Request, res: Response): Promise<Response<SearchResponse>> {
   const query = req.query.q as string;
   if (!query) {
     return res.status(400).json({

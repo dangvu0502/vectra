@@ -1,7 +1,12 @@
 import type { Request, Response } from 'express';
 import { deleteDocument } from './service';
 
-export async function deleteController(req: Request, res: Response) {
+type DeleteResponse = {
+  status: 'success' | 'error';
+  message?: string;
+}
+
+export async function deleteController(req: Request, res: Response): Promise<Response<DeleteResponse>> {
   try {
     const success = await deleteDocument(req.storage, req.params.id);
     if (!success) {

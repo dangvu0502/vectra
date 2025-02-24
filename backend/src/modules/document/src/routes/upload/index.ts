@@ -1,12 +1,12 @@
 import { Router } from 'express';
 import multer from 'multer';
 import { uploadController } from './controller';
-import { withStorage } from '../../middleware/storage';
 
 const router = Router();
 const upload = multer({ dest: 'uploads/' });
 
-router.use(withStorage);
-router.post('/', upload.single('file'),  uploadController);
+router.post('/', upload.single('file'), (req, res) => {
+    uploadController(req, res);
+});
 
 export default router;
