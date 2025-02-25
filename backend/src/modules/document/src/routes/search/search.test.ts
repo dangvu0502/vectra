@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { BASE_URL, createFormData, createTestFile } from '../../tests/utils';
+import { PREFIX } from '../../config';
 
 describe('Search Route', () => {
     let testFilePath: string;
@@ -7,14 +8,14 @@ describe('Search Route', () => {
     beforeEach(async () => {
         testFilePath = await createTestFile('Searchable content');
         // Upload a test document for searching
-        await fetch(`${BASE_URL}/documents/upload`, {
+        await fetch(`${BASE_URL}${PREFIX}/upload`, {
             method: 'POST',
             body: await createFormData(testFilePath)
         });
     });
 
     it('should search documents', async () => {
-        const response = await fetch(`${BASE_URL}/documents/search?q=Searchable`);
+        const response = await fetch(`${BASE_URL}${PREFIX}/search?q=Searchable`);
         const data = await response.json();
 
         expect(response.status).toBe(200);
@@ -29,7 +30,7 @@ describe('Search Route', () => {
     });
 
     it('should return empty array when no matches', async () => {
-        const response = await fetch(`${BASE_URL}/documents/search?q=nonexistent`);
+        const response = await fetch(`${BASE_URL}${PREFIX}/search?q=nonexistent`);
         const data = await response.json();
 
         expect(response.status).toBe(200);
@@ -40,7 +41,7 @@ describe('Search Route', () => {
     });
 
     it('should return 400 when no query provided', async () => {
-        const response = await fetch(`${BASE_URL}/documents/search`);
+        const response = await fetch(`${BASE_URL}${PREFIX}/search`);
         const data = await response.json();
 
         expect(response.status).toBe(400);

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { BASE_URL, createFormData, createTestFile } from '../../tests/utils';
+import { PREFIX } from '../../config';
 
 describe('Upload Route', () => {
   let testFilePath: string;
@@ -9,7 +10,7 @@ describe('Upload Route', () => {
   });
 
   it('should upload a document', async () => {
-    const response = await fetch(`${BASE_URL}/documents/upload`, {
+    const response = await fetch(`${BASE_URL}${PREFIX}/upload`, {
       method: 'POST',
       body: await createFormData(testFilePath)
     });
@@ -26,7 +27,7 @@ describe('Upload Route', () => {
   });
 
   it('should return 400 when no file is provided', async () => {
-    const response = await fetch(`${BASE_URL}/documents/upload`, {
+    const response = await fetch(`${BASE_URL}${PREFIX}/upload`, {
       method: 'POST'
     });
 

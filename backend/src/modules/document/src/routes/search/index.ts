@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { searchController } from './controller';
 
 const router = Router();
-router.get('/', (req, res) => {
+router.get('/search', (req, res) => {
     searchController(req, res);
 });
 

@@ -3,18 +3,20 @@ import fs from 'fs/promises';
 import type { Server } from 'http';
 import path from 'path';
 import router from '../routes';
+import { withStorage } from '../middleware/storage';
 
 export const TEST_PORT = 3000;
 export const BASE_URL = `http://localhost:${TEST_PORT}`;
 export const FIXTURES_DIR = path.join(__dirname, 'fixtures');
 
-const app = express();
-app.use('/documents', router);
-
 let server: Server;
 
 // Server management
 export async function setupTestServer() {
+  const app = express();
+  app.use(withStorage);
+  app.use('/', router);
+
   server = await new Promise((resolve, reject) => {
     const instance = app.listen(TEST_PORT, () => resolve(instance));
     instance.once('error', reject);
@@ -24,7 +26,7 @@ export async function setupTestServer() {
 
 export async function cleanupServer(): Promise<void> {
   if (!server) return;
-  
+
   await new Promise<void>((resolve, reject) => {
     server.close((err) => err ? reject(err) : resolve());
   });
