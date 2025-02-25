@@ -1,12 +1,8 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
-import { setupTestServer, cleanupServer, createTestFile, createFormData, BASE_URL } from '../../__tests__';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { BASE_URL, createFormData, createTestFile } from '../../tests/utils';
 
 describe('Search Route', () => {
     let testFilePath: string;
-
-    beforeAll(async () => {
-        await setupTestServer();
-    });
 
     beforeEach(async () => {
         testFilePath = await createTestFile('Searchable content');
@@ -16,12 +12,6 @@ describe('Search Route', () => {
             body: await createFormData(testFilePath)
         });
     });
-
-    afterAll(async () => {
-        await cleanupServer();
-    });
-
-
 
     it('should search documents', async () => {
         const response = await fetch(`${BASE_URL}/documents/search?q=Searchable`);

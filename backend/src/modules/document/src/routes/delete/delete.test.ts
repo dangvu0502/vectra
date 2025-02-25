@@ -1,15 +1,7 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { setupTestServer, cleanupServer, createTestFile, createFormData, BASE_URL } from '../../__tests__';
+import { describe, expect, it } from 'vitest';
+import { BASE_URL, createFormData, createTestFile } from '../../tests/utils';
 
 describe('Delete Route', () => {
-    beforeAll(async () => {
-        await setupTestServer();
-    });
-
-    afterAll(async () => {
-        await cleanupServer();
-    });
-
     it('should delete an existing document', async () => {
         // Create and upload a test document
         const testFilePath = await createTestFile('Delete test content');

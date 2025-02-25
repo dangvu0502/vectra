@@ -1,22 +1,12 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
-import { setupTestServer, cleanupServer, createTestFile, createFormData, BASE_URL } from '../../__tests__';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { BASE_URL, createFormData, createTestFile } from '../../tests/utils';
 
 describe('Upload Route', () => {
-    let testFilePath: string;
+  let testFilePath: string;
 
-    
-
-    beforeAll(async () => {
-        await setupTestServer();
-    });
-
-    beforeEach(async () => {
-        testFilePath = await createTestFile();
-    });
-
-    afterAll(async () => {
-        await cleanupServer();
-    });
+  beforeEach(async () => {
+    testFilePath = await createTestFile();
+  });
 
   it('should upload a document', async () => {
     const response = await fetch(`${BASE_URL}/documents/upload`, {
