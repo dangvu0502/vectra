@@ -26,7 +26,8 @@ describe('Delete Route', () => {
     });
 
     it('should return 404 for non-existent document', async () => {
-        const response = await fetch(`${BASE_URL}${PREFIX}/nonexistent-id`, {
+        const uuid = '00000000-0000-0000-0000-000000000000'; // A valid UUID format
+        const response = await fetch(`${BASE_URL}${PREFIX}/${uuid}`, {
             method: 'DELETE'
         });
         const data = await response.json();
@@ -44,10 +45,10 @@ describe('Delete Route', () => {
         });
         const data = await response.json();
 
-        expect(response.status).toBe(404);
+        expect(response.status).toBe(400);
         expect(data).toMatchObject({
             status: 'error',
-            message: 'Document not found'
+            message: 'Invalid document ID format'
         });
     });
 });

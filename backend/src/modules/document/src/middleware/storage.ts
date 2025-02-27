@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
-import { createDocumentStorage } from '../storage';
+import { InMemoryDocumentStorage } from '../storage';
 
-const storage = createDocumentStorage();
+const storage = new InMemoryDocumentStorage();
 
 export function withStorage(req: Request, res: Response, next: NextFunction) {
   req.storage = storage;
@@ -11,7 +11,7 @@ export function withStorage(req: Request, res: Response, next: NextFunction) {
 declare global {
   namespace Express {
     interface Request {
-      storage: ReturnType<typeof createDocumentStorage>;
+      storage: InstanceType<typeof InMemoryDocumentStorage>;
     }
   }
 }

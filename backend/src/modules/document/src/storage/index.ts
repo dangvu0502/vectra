@@ -1,18 +1,31 @@
 import type { Document, DocumentStorage } from "../types";
-import { saveDocument } from './save';
-import { findDocument } from './findDocumentById';
-import { searchDocuments } from './search';
-import { deleteDocument } from './delete';
 
-export const createDocumentStorage = (): DocumentStorage => {
-  const documents: Map<string, Document> = new Map();
+export class InMemoryDocumentStorage implements DocumentStorage {
+  private documents: Map<string, Document>;
 
-  return {
-    save: saveDocument(documents),
-    find: findDocument(documents),
-    search: searchDocuments(documents),
-    delete: deleteDocument(documents)
-  };
-};
+  constructor() {
+    this.documents = new Map();
+  }
 
-export type InMemoryDocumentStorage = ReturnType<typeof createDocumentStorage>;
+  async save(doc: Document): Promise<Document> {
+    this.documents.set(doc.id, doc);
+    return doc;
+  }
+
+  async find(id: string): Promise<Document | null> {
+    return this.documents.get(id) || null;
+  }
+
+  async search(query: string): Promise<Document[]> {
+    const lowercaseQuery = query.toLowerCase();
+    return Array.from(this.documents.values())
+      .filter(doc => 
+        doc.content.toLowerCase().includes(lowercaseQuery) ||
+        doc.filename.toLowerCase().includes(lowercaseQuery)
+      );
+  }
+
+  async delete(id: string): Promise<boolean> {
+    return this.documents.delete(id);
+  }
+}

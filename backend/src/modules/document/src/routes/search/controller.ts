@@ -18,7 +18,7 @@ export async function searchController(req: Request, res: Response): Promise<Res
   if (!result.success) {
     return res.status(400).json({
       status: 'error',
-      message: result.error.issues[0].message
+      message: 'Query required'
     });
   }
 
