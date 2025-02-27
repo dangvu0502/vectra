@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+import { z } from 'zod';
 import { uploadDocument } from './service';
 
 type UploadResponse = {
@@ -7,8 +8,25 @@ type UploadResponse = {
   message?: string;
 }
 
+const uploadSchema = z.object({
+  file: z.object({
+    originalname: z.string(),
+    path: z.string()
+  }).nullable()
+});
+
+
 export async function uploadController(req: Request, res: Response): Promise<Response<UploadResponse>> {
-  if (!req.file) {
+  const result = uploadSchema.safeParse({ file: req.file });
+
+  if (!result.success) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'No file uploaded'
+    });
+  }
+
+  if (!result.data.file) {
     return res.status(400).json({
       status: 'error',
       message: 'No file uploaded'
@@ -16,7 +34,7 @@ export async function uploadController(req: Request, res: Response): Promise<Res
   }
 
   try {
-    const doc = await uploadDocument(req.storage, req.file.originalname, req.file.path);
+    const doc = await uploadDocument(req.storage, result.data.file.originalname, result.data.file.path);
     return res.status(201).json({
       status: 'success',
       data: doc
