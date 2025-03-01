@@ -3,14 +3,16 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
+    "test": "vitest",
     "dev": "node --import ./register-loader.ts ./src/main.ts"
   },
   "dependencies": {
-    "express": "^4.21.2",
-    "@embeddy/document": "workspace:*"
+    "@embeddy/document": "workspace:*",
+    "express": "^4.21.2"
   },
   "devDependencies": {
+    "typescript": "^5.0.0",
     "@types/express": "^5.0.0",
-    "typescript": "^5.3.3"
+    "vitest": "^3.0.6"
   }
 }
