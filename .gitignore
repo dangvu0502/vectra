@@ -173,3 +173,5 @@ dist
 
 #secrets
 secrets
+
+pnpm-lock.yaml

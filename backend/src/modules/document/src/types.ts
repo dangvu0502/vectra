@@ -1,10 +1,11 @@
-import type { Response } from 'express';
+import type { InMemoryDocumentStorage } from "./storage";
 
-export type ControllerResponse = Promise<Response<ApiResponse>>;
-export interface ApiResponse {
-  status: 'success' | 'error';
-  message?: string;
-  data?: any;
+declare global {
+  namespace Express {
+    interface Request {
+      storage: InstanceType<typeof InMemoryDocumentStorage>;
+    }
+  }
 }
 
 export interface Document {

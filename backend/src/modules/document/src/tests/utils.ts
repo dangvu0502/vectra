@@ -1,9 +1,11 @@
-import express from 'express';
+import express, { type NextFunction, type Request, type Response } from 'express';
 import fs from 'fs/promises';
 import type { Server } from 'http';
 import path from 'path';
 import router from '../routes';
-import { withStorage } from '../middleware/storage';
+import { InMemoryDocumentStorage } from '../storage';
+import { PREFIX } from '../config';
+
 
 export const TEST_PORT = 3000;
 export const BASE_URL = `http://localhost:${TEST_PORT}`;
@@ -14,8 +16,12 @@ let server: Server;
 // Server management
 export async function setupTestServer() {
   const app = express();
-  app.use(withStorage);
-  app.use('/', router);
+  const storage = new InMemoryDocumentStorage();
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    req.storage = storage;
+    next();
+  });
+  app.use(PREFIX, router);
 
   server = await new Promise((resolve, reject) => {
     const instance = app.listen(TEST_PORT, () => resolve(instance));

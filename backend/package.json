@@ -1,9 +1,16 @@
 {
-    "name": "ragify",
-    "module": "index.ts",
-    "type": "module",
-    "devDependencies": {},
-    "peerDependencies": {
-      "typescript": "^5.0.0"
-    }
+  "name": "@embeddy/backend",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node --import ./register-loader.ts ./src/server.ts"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "@embeddy/document": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "typescript": "^5.3.3"
   }
+}
