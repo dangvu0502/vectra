@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "node --import ./register-loader.ts ./src/server.ts"
+    "dev": "node --import ./register-loader.ts ./src/main.ts"
   },
   "dependencies": {
     "express": "^4.21.2",
