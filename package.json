@@ -1,0 +1,16 @@
+{
+  "name": "embeddy",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm:dev:server\" \"npm:dev:client\" --names \"[server],[client]\" --prefix-colors \"blue.bold,green.bold\" --prefix \"{name}\"",
+    "dev:server": "cd packages/server && pnpm run dev",
+    "dev:client": "cd apps/client && pnpm run dev"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

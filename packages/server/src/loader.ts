@@ -23,7 +23,7 @@ export async function resolve(
   nextResolve: NextResolve
 ): Promise<ResolveResult> {
   // Debug logging
-  console.log(`Resolving: ${specifier}`);
+  // console.log(`Resolving: ${specifier}`);
   
   // If the specifier already has an extension or is a node built-in, use the default resolver
   if (extname(specifier) || specifier.startsWith('node:') || specifier.includes('://')) {
@@ -43,7 +43,7 @@ export async function resolve(
       
       if (stats && stats.isDirectory()) {
         // It's a directory, append index.ts
-        console.log(`Resolving directory import: ${specifier}/index.ts`);
+        // console.log(`Resolving directory import: ${specifier}/index.ts`);
         return {
           url: new URL(specifier + '/index.ts', context.parentURL).href,
           shortCircuit: true
@@ -87,7 +87,7 @@ export async function resolve(
       // Try to find index.ts in the directory
       try {
         await access(join(resolvedPath, 'index.ts'));
-        console.log(`Resolved directory to index.ts: ${resolvedPath}/index.ts`);
+        // console.log(`Resolved directory to index.ts: ${resolvedPath}/index.ts`);
         return {
           url: pathToFileURL(join(resolvedPath, 'index.ts')).href,
           shortCircuit: true
@@ -96,7 +96,7 @@ export async function resolve(
         // Try index.js if index.ts doesn't exist
         try {
           await access(join(resolvedPath, 'index.js'));
-          console.log(`Resolved directory to index.js: ${resolvedPath}/index.js`);
+          // console.log(`Resolved directory to index.js: ${resolvedPath}/index.js`);
           return {
             url: pathToFileURL(join(resolvedPath, 'index.js')).href,
             shortCircuit: true
@@ -111,7 +111,7 @@ export async function resolve(
       for (const ext of ['.ts', '.js']) {
         try {
           await access(`${resolvedPath}${ext}`);
-          console.log(`Resolved to file with extension: ${resolvedPath}${ext}`);
+          // console.log(`Resolved to file with extension: ${resolvedPath}${ext}`);
           return {
             url: pathToFileURL(`${resolvedPath}${ext}`).href,
             shortCircuit: true
@@ -139,7 +139,7 @@ export async function resolve(
         try {
           const fullPath = join(filePath, indexFile);
           await access(fullPath);
-          console.log(`Resolved nested directory to: ${fullPath}`);
+          // console.log(`Resolved nested directory to: ${fullPath}`);
           return {
             url: pathToFileURL(fullPath).href,
             shortCircuit: true
