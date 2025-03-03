@@ -4,6 +4,7 @@ import { Sidebar } from '@/components/ui/sidebar';
 import { Tab, Tabs } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { FileList } from '@/components/ui/file-list';
+import { useDocumentsQuery, useDocumentMutations } from '@/hooks/use-documents-query';
 
 interface FileDetails {
   name: string;
@@ -17,57 +18,51 @@ interface FileDetails {
 export const StoragePage: FC = () => {
   const [activeTab, setActiveTab] = useState<'files' | 'vectorStores'>('files');
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   
-  const files = [
-    {
-      name: 'contentlist.json',
-      size: '65 KB',
-      date: '2/23/2025, 2:22 PM',
-      type: 'json'
-    },
-    {
-      name: 'productlist.json',
-      size: '71 KB',
-      date: '2/23/2025, 2:21 PM',
-      type: 'json'
-    },
-    {
-      name: 'Section3.png',
-      size: '608 KB',
-      date: '2/23/2025, 2:21 PM',
-      type: 'png'
-    }
-  ];
-  
-  const fileDetails: Record<string, FileDetails> = {
-    'contentlist.json': {
-      name: 'contentlist.json',
-      id: 'file-JEtEWTLsF3GcLj1HRRDBe9',
-      purpose: 'assistants',
-      size: '65 KB',
-      createdAt: 'Feb 23, 2025, 2:22 PM',
-      status: 'ready'
-    },
-    'productlist.json': {
-      name: 'productlist.json',
-      id: 'file-ABcDEFgHiJkLmNoPqRsTuV',
-      purpose: 'assistants',
-      size: '71 KB',
-      createdAt: 'Feb 23, 2025, 2:21 PM',
-      status: 'ready'
-    },
-    'Section3.png': {
-      name: 'Section3.png',
-      id: 'file-XyZaBcDeFgHiJkLmNoPqRs',
-      purpose: 'user_data',
-      size: '608 KB',
-      createdAt: 'Feb 23, 2025, 2:21 PM',
-      status: 'ready'
+  const { data: documents, isLoading } = useDocumentsQuery(searchQuery);
+  const { uploadMutation, deleteMutation } = useDocumentMutations();
+
+  const files = documents?.map(doc => ({
+    name: doc.filename,
+    size: '65 KB',
+    date: new Date(doc.createdAt).toLocaleString(),
+    type: doc.filename.split('.').pop() || ''
+  })) || [];
+
+  const fileDetails: Record<string, FileDetails> = Object.fromEntries(
+    documents?.map(doc => [
+      doc.filename,
+      {
+        name: doc.filename,
+        id: doc.id,
+        purpose: 'assistants',
+        size: '65 KB',
+        createdAt: new Date(doc.createdAt).toLocaleString(),
+        status: 'ready'
+      }
+    ]) || []
+  );
+
+  const handleUpload = async (file: File) => {
+    try {
+      await uploadMutation.mutateAsync(file);
+    } catch (error) {
+      console.error('Upload failed:', error);
     }
   };
-  
+
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteMutation.mutateAsync(id);
+      setSelectedFile(null);
+    } catch (error) {
+      console.error('Delete failed:', error);
+    }
+  };
+
   const selectedFileDetails = selectedFile ? fileDetails[selectedFile] : null;
-  
+
   return (
     <div className="flex h-screen bg-background text-foreground">
       <Sidebar />
@@ -95,9 +90,19 @@ export const StoragePage: FC = () => {
                 variant="default" 
                 size="sm"
                 className="gap-2 shadow-sm hover:shadow-md transition-shadow duration-200"
+                onClick={() => {
+                  const input = document.createElement('input');
+                  input.type = 'file';
+                  input.onchange = (e) => {
+                    const file = (e.target as HTMLInputElement).files?.[0];
+                    if (file) handleUpload(file);
+                  };
+                  input.click();
+                }}
+                disabled={uploadMutation.isPending}
               >
                 <Upload size={16} className="transition-transform duration-200 group-hover:scale-110" />
-                Upload
+                {uploadMutation.isPending ? 'Uploading...' : 'Upload'}
               </Button>
               <Button 
                 variant="outline" 
@@ -111,12 +116,22 @@ export const StoragePage: FC = () => {
           
           <div className="flex gap-6 h-[calc(100vh-200px)]">
             <div className="flex-1 transition-all duration-200 ease-in-out">
-              <FileList 
-                files={files} 
-                selectedFile={selectedFile || ''}
-                onFileSelect={(file) => setSelectedFile(file.name)}
-                className="bg-card"
-              />
+              {isLoading ? (
+                <div className="flex items-center justify-center h-full">
+                  <span>Loading...</span>
+                </div>
+              ) : files.length === 0 ? (
+                <div className="text-center text-muted-foreground p-6">
+                  No files found
+                </div>
+              ) : (
+                <FileList 
+                  files={files} 
+                  selectedFile={selectedFile || ''}
+                  onFileSelect={(file) => setSelectedFile(file.name)}
+                  className="bg-card"
+                />
+              )}
             </div>
             
             {selectedFileDetails && (
@@ -162,8 +177,10 @@ export const StoragePage: FC = () => {
                     variant="destructive" 
                     size="sm" 
                     className="px-4 shadow-sm hover:shadow-md transition-shadow duration-200"
+                    onClick={() => selectedFileDetails && handleDelete(selectedFileDetails.id)}
+                    disabled={deleteMutation.isPending}
                   >
-                    Delete
+                    {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
                   </Button>
                 </div>
               </div>

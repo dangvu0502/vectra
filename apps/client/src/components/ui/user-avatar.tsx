@@ -1,5 +1,5 @@
 import { FC } from "react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/utils";
 import { User } from "lucide-react";
 
 export interface UserAvatarProps {

@@ -1,18 +1,19 @@
 {
-    "name": "@embeddy/server",
-    "version": "1.0.0",
-    "type": "module",
-    "scripts": {
-      "test": "vitest",
-      "dev": "node --import ./register-loader.ts --watch ./src/main.ts"
-    },
-    "dependencies": {
-      "@embeddy/document": "workspace:*",
-      "express": "^4.21.2"
-    },
-    "devDependencies": {
-      "typescript": "^5.0.0",
-      "@types/express": "^5.0.0",
-      "vitest": "^3.0.6"
-    }
+  "name": "@embeddy/server",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "test": "vitest",
+    "dev": "node --import ./register-loader.ts --watch ./src/main.ts"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "morgan": "^1.10.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/morgan": "^1.9.9",
+    "typescript": "^5.0.0",
+    "vitest": "^3.0.6"
   }
+}

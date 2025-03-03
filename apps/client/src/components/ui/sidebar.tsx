@@ -1,11 +1,11 @@
 import { useTheme } from "@/hooks/use-theme";
-import { cn } from "@/lib/utils";
+import { cn } from "@/utils";
 import * as Popover from "@radix-ui/react-popover";
-import { BarChart2, Database, Key, ChevronsUpDown } from "lucide-react";
+import { ChevronsUpDown, Database, Key } from "lucide-react";
 import { FC, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Switch } from "./switch";
 import { SidebarItem } from "./sidebar-item";
+import { Switch } from "./switch";
 import { UserAvatar } from "./user-avatar";
 
 interface SidebarProps {
