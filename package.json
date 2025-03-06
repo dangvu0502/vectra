@@ -11,6 +11,10 @@
     "dev:client": "cd apps/client && pnpm run dev"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.17",
     "concurrently": "^9.1.2"
+  },
+  "dependencies": {
+    "cors": "^2.8.5"
   }
 }

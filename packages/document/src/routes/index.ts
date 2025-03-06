@@ -1,12 +1,12 @@
 import { Router } from 'express';
 import uploadRouter from './upload';
-import searchRouter from './search';
+import queryRouter from './query';
 import deleteRouter from './delete';
 
 const router = Router();
 
 router.use(uploadRouter);
-router.use(searchRouter);
+router.use(queryRouter); 
 router.use(deleteRouter);
 
 export default router;

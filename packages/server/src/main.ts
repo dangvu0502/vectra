@@ -1,11 +1,13 @@
 import express from 'express';
 import morgan from 'morgan';
+import cors from 'cors';
 import { createDocumentService } from '@embeddy/document';
 
 const app = express();
 
 // Request logging middleware
 app.use(morgan('dev'));
+// app.use(cors())
 
 // Error handling middleware
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {

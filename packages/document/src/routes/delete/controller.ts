@@ -1,6 +1,5 @@
 import type { Request, Response } from 'express';
 import { z } from 'zod';
-import { deleteDocument } from './service';
 
 type DeleteResponse = {
   status: 'success' | 'error';
@@ -22,7 +21,7 @@ export async function deleteController(req: Request, res: Response): Promise<Res
       });
     }
 
-    const success = await deleteDocument(req.storage, result.data.id);
+    const success = await req.storage.delete(result.data.id);
     if (!success) {
       return res.status(404).json({
         status: 'error',

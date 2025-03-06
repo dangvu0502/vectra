@@ -1,13 +1,30 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { documentsService } from '@/api/services/documents';
+import type { Document } from '@/api/types';
 
 export const DOCUMENTS_QUERY_KEY = ['documents'] as const;
 
-export function useDocumentsQuery(query?: string) {
+type QueryOptions = {
+  query?: string;
+  page?: number;
+  limit?: number;
+  sortBy?: keyof Document;
+  sortOrder?: 'asc' | 'desc';
+}
+
+export function useDocumentsQuery(options: QueryOptions = {}) {
+  const { query, page = 1, limit = 10, sortBy, sortOrder } = options;
+
   return useQuery({
-    queryKey: [...DOCUMENTS_QUERY_KEY, query],
-    queryFn: () => documentsService.search(query || ''),
-    select: (response) => response.data || [],
+    queryKey: [...DOCUMENTS_QUERY_KEY, options],
+    queryFn: () => documentsService.query({
+      query,
+      page,
+      limit,
+      sortBy,
+      sortOrder
+    }),
+    select: (response) => response.data || { documents: [], pagination: { page, limit, total: 0 } },
   });
 }
 
@@ -15,14 +32,14 @@ export function useDocumentMutations() {
   const queryClient = useQueryClient();
 
   const uploadMutation = useMutation({
-    mutationFn: documentsService.upload.bind(documentsService),
+    mutationFn: (file: File) => documentsService.upload(file),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: DOCUMENTS_QUERY_KEY });
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: documentsService.deleteDocument.bind(documentsService),
+    mutationFn: (id: string) => documentsService.deleteDocument(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: DOCUMENTS_QUERY_KEY });
     },

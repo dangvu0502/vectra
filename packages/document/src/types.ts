@@ -19,6 +19,14 @@ export interface Document {
 export interface DocumentStorage {
   save(doc: Document): Promise<Document>;
   find(id: string): Promise<Document | null>;
-  search(query: string): Promise<Document[]>;
   delete(id: string): Promise<boolean>;
+  query(
+    options?: {
+      query?: string; 
+      page?: number; 
+      limit?: number;
+      sortBy?: keyof Document;
+      sortOrder?: 'asc' | 'desc';
+    }
+  ): Promise<{documents: Document[], total: number}>;
 }

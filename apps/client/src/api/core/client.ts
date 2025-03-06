@@ -11,7 +11,6 @@ export async function apiClient<T>(
 ): Promise<T> {
   const response = await fetch(endpoint, {
     headers: {
-      'Content-Type': 'application/json',
       ...options.headers,
     },
     ...options,
