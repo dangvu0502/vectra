@@ -1,84 +1,111 @@
-import { FC } from 'react';
-import { Button } from '@/components/ui/button';
+import { FC, useState } from 'react';
+import { Plus, HelpCircle } from 'lucide-react';
+import { Tooltip } from '@/components/ui/tooltip';
+import { DetailsPanel, DetailItem, DetailsPanelActionButton } from '@/components/ui/details-panel';
 
 interface FileDetails {
   name: string;
   id: string;
-  purpose: string;
   size: string;
   createdAt: string;
   status: 'ready' | 'processing' | 'error';
+  vectorStores?: Array<{ id: string; name: string; }>;
 }
 
 interface FileDetailsPanelProps {
   file: FileDetails | null;
   onDelete: (id: string) => Promise<void>;
   isDeleting: boolean;
+  onCreateVectorStore?: (fileId: string) => Promise<void>;
+  isCreatingVectorStore?: boolean;
 }
 
 export const FileDetailsPanel: FC<FileDetailsPanelProps> = ({ 
   file, 
   onDelete, 
-  isDeleting 
+  isDeleting,
+  onCreateVectorStore,
+  isCreatingVectorStore
 }) => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  if (!file) {
+    return null;
+  }
+  
+  const actions = (
+    <DetailsPanelActionButton
+      variant="destructive"
+      onClick={() => onDelete(file.id)}
+      disabled={isDeleting}
+    >
+      {isDeleting ? 'Deleting...' : 'Delete'}
+    </DetailsPanelActionButton>
+  );
+
   return (
-    <div className="w-[400px] border rounded-md p-6 bg-card shadow-sm hover:shadow-md transition-all duration-200 ease-in-out">
-      <h2 className="text-sm font-medium uppercase text-muted-foreground mb-2">FILE</h2>
-      <h3 className="text-xl font-semibold mb-6 truncate text-primary transition-colors duration-200">{file.name}</h3>
-      
-      <div className="space-y-5">
-        <DetailItem label="Status">
-          <div className="flex items-center gap-2">
-            <div className={`w-2 h-2 rounded-full transition-colors duration-200 ${
-              file.status === 'ready' ? 'bg-green-500' : 
-              file.status === 'processing' ? 'bg-amber-500' : 'bg-red-500'
-            }`} />
-            <span className="font-medium transition-colors duration-200">
-              {file.status === 'ready' ? 'Ready' : 
-               file.status === 'processing' ? 'Processing' : 'Error'}
-            </span>
-          </div>
-        </DetailItem>
-        
-        <DetailItem label="File ID">
-          <span className="font-mono text-xs bg-muted px-2 py-1 rounded transition-colors duration-200">
-            {file.id}
+    <DetailsPanel
+      title={file.name}
+      subtitle="FILE"
+      actions={actions}
+    >
+      <DetailItem label="Status">
+        <div className="flex items-center gap-2">
+          <div className={`w-2 h-2 rounded-full transition-colors duration-200 ${
+            file.status === 'ready' ? 'bg-green-500' : 
+            file.status === 'processing' ? 'bg-amber-500' : 'bg-red-500'
+          }`} />
+          <span className="font-medium transition-colors duration-200">
+            {file.status === 'ready' ? 'Ready' : 
+             file.status === 'processing' ? 'Processing' : 'Error'}
           </span>
-        </DetailItem>
-        
-        <DetailItem label="Purpose">
-          <span className="font-medium">{file.purpose}</span>
-        </DetailItem>
-        
-        <DetailItem label="Size">
-          <span className="font-medium">{file.size}</span>
-        </DetailItem>
-        
-        <DetailItem label="Created at">
-          <span className="font-medium">{file.createdAt}</span>
-        </DetailItem>
-      </div>
+        </div>
+      </DetailItem>
       
-      <div className="mt-8 flex justify-end">
-        <Button 
-          variant="destructive" 
-          size="sm" 
-          className="px-4 shadow-sm hover:shadow-md transition-shadow duration-200"
-          onClick={() => onDelete(file.id)}
-          disabled={isDeleting}
-        >
-          {isDeleting ? 'Deleting...' : 'Delete'}
-        </Button>
-      </div>
-    </div>
+      <DetailItem label="File ID">
+        <span className="font-mono text-xs bg-muted px-2 py-1 rounded transition-colors duration-200">
+          {file.id}
+        </span>
+      </DetailItem>
+      
+      <DetailItem label="Size">
+        <span className="font-medium">{file.size}</span>
+      </DetailItem>
+      
+      <DetailItem label="Created at">
+        <span className="font-medium">{file.createdAt}</span>
+      </DetailItem>
+
+      <DetailItem 
+        label={
+          <div className="flex items-center gap-1">
+            Vector Store Usage
+            <Tooltip content="Vector stores that are using this file">
+              <HelpCircle size={14} className="text-muted-foreground hover:text-foreground transition-colors cursor-help" />
+            </Tooltip>
+          </div>
+        }
+      >
+        <div className="space-y-2">
+          {file.vectorStores && file.vectorStores.length > 0 ? (
+            <div className="space-y-1">
+              {file.vectorStores.map(store => (
+                <div 
+                  key={store.id}
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200 flex items-center gap-2"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary/50" />
+                  {store.name}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <span className="text-sm text-muted-foreground">
+              Not used in any vector stores
+            </span>
+          )}
+        </div>
+      </DetailItem>
+    </DetailsPanel>
   );
 };
-
-const DetailItem: FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
-  <div className="flex items-center justify-between group">
-    <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors duration-200">
-      {label}
-    </span>
-    {children}
-  </div>
-);

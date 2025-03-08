@@ -1,6 +1,27 @@
 import { FC } from 'react';
 import { cn } from '@/utils';
-import { File } from 'lucide-react';
+import { File, FileText, Image, Video, Music, FileQuestion } from 'lucide-react';
+
+const getFileIcon = (type: string) => {
+  switch (type.toLowerCase()) {
+    case 'txt':
+    case 'md':
+    case 'json':
+    case 'csv':
+      return FileText;
+    case 'jpg':
+    case 'jpeg':
+    case 'png':
+      return Image;
+    case 'mp4':
+      return Video;
+    case 'mp3':
+    case 'wav':
+      return Music;
+    default:
+      return FileQuestion;
+  }
+};
 
 interface FileItemProps {
   name: string;
@@ -12,6 +33,7 @@ interface FileItemProps {
 }
 
 export const FileItem: FC<FileItemProps> = ({ name, size, date, type, onClick, isSelected }) => {
+  const Icon = getFileIcon(type);
   return (
     <div
       onClick={onClick}
@@ -21,7 +43,7 @@ export const FileItem: FC<FileItemProps> = ({ name, size, date, type, onClick, i
       )}
     >
       <div className="flex items-center gap-3">
-        <File size={18} className={cn('transition-colors duration-200', isSelected ? 'text-primary' : 'text-muted-foreground')} />
+        <Icon size={18} className={cn('transition-colors duration-200', isSelected ? 'text-primary' : 'text-muted-foreground')} />
         <span className={cn('font-medium transition-colors duration-200', isSelected && 'text-primary')}>{name}</span>
       </div>
       <div className="flex items-center gap-6">
