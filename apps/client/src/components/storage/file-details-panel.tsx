@@ -48,8 +48,9 @@ export const FileDetailsPanel: FC<FileDetailsPanelProps> = ({
       title={file.name}
       subtitle="FILE"
       actions={actions}
+      className="w-[400px] lg:w-[450px] rounded-lg border border-border shadow-sm overflow-hidden flex-shrink-0"
     >
-      <DetailItem label="Status">
+      <DetailItem label="Status" className="mb-2">
         <div className="flex items-center gap-2">
           <div className={`w-2 h-2 rounded-full transition-colors duration-200 ${
             file.status === 'ready' ? 'bg-green-500' : 
@@ -62,17 +63,17 @@ export const FileDetailsPanel: FC<FileDetailsPanelProps> = ({
         </div>
       </DetailItem>
       
-      <DetailItem label="File ID">
+      <DetailItem label="File ID" className="mb-2">
         <span className="font-mono text-xs bg-muted px-2 py-1 rounded transition-colors duration-200">
           {file.id}
         </span>
       </DetailItem>
       
-      <DetailItem label="Size">
+      <DetailItem label="Size" className="mb-2">
         <span className="font-medium">{file.size}</span>
       </DetailItem>
       
-      <DetailItem label="Created at">
+      <DetailItem label="Created at" className="mb-2">
         <span className="font-medium">{file.createdAt}</span>
       </DetailItem>
 

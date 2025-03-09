@@ -43,10 +43,11 @@ export const DetailsPanel: FC<DetailsPanelProps> = ({
 interface DetailItemProps {
   label: ReactNode;
   children: ReactNode;
+  className?: string;
 }
 
-export const DetailItem: FC<DetailItemProps> = ({ label, children }) => (
-  <div className="flex items-center justify-between group">
+export const DetailItem: FC<DetailItemProps> = ({ label, children, className }) => (
+  <div className={cn("flex items-center justify-between group", className)}>
     <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors duration-200">
       {label}
     </span>

@@ -1,6 +1,6 @@
 import { FC, useState } from 'react';
 import { AppLayout } from '@/components/ui/app-layout';
-import { FileList } from '@/components/ui/file-list';
+import { FileList } from '@/components/storage/file-list';
 import { useDocumentsQuery, useDocumentMutations } from '@/hooks/use-documents-query';
 import { StorageHeader } from '@/components/storage/storage-header';
 import { FileDetailsPanel } from '@/components/storage/file-details-panel';
@@ -14,7 +14,29 @@ export const StoragePage: FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
-  
+  const [isCreatingVectorStore, setIsCreatingVectorStore] = useState(false);
+  const [isCreatingMode, setIsCreatingMode] = useState(false);
+
+  const [vectorStores, setVectorStores] = useState<Array<{
+    id: string;
+    name: string;
+    metadata: Record<string, any>;
+    createdAt: string;
+    size?: string;
+    fileCount?: number;
+    lastUpdated?: string;
+    usage?: string;
+  }>>([{
+    id: '1',
+    name: 'Default Store',
+    metadata: {},
+    createdAt: new Date().toISOString(),
+    size: '128 KB',
+    fileCount: 3,
+    lastUpdated: new Date().toISOString(),
+    usage: '256 KB'
+  }]);
+
   const { data, isLoading } = useDocumentsQuery({
     query: searchQuery || undefined,
     page,
@@ -66,72 +88,71 @@ export const StoragePage: FC = () => {
 
   const selectedFileDetails = selectedFile ? fileDetails[selectedFile] : null;
 
+  const handleCreateVectorStore = async (data: {
+    name: string;
+    description: string;
+    similarityThreshold: number;
+  }) => {
+    try {
+      setIsCreatingVectorStore(true);
+      // TODO: Implement vector store creation API call
+      console.log('Creating vector store:', data);
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      setIsCreatingMode(false);
+    } catch (error) {
+      console.error('Failed to create vector store:', error);
+    } finally {
+      setIsCreatingVectorStore(false);
+    }
+  };
+
   return (
     <AppLayout>
-      <div className="space-y-6">
+      <div className="space-y-6 p-4 md:p-6 max-w-[1600px] mx-auto">
         <StorageHeader
           activeTab={activeTab}
-          onTabChange={setActiveTab}
+          onTabChange={(tab) => {
+            setActiveTab(tab);
+            if (tab === 'files') {
+              setIsCreatingMode(false);
+            }
+          }}
           onUpload={handleUpload}
           isUploading={uploadMutation.isPending}
+          onCreateVectorStore={async () => {
+            setIsCreatingMode(true);
+            setSelectedVectorStore(null);
+            return Promise.resolve();
+          }}
+          isCreatingVectorStore={isCreatingVectorStore}
         />
         
-        <div className="flex gap-6 h-[calc(100vh-200px)]">
-          <div className="flex-1 transition-all duration-200 ease-in-out">
+        <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 min-h-[calc(100vh-200px)]">
+          <div className="flex-1 transition-all duration-200 ease-in-out border rounded-lg shadow-sm bg-card overflow-hidden">
             {activeTab === 'files' ? (
               isLoading ? (
-                <div className="flex items-center justify-center h-full">
-                  <span>Loading...</span>
+                <div className="flex items-center justify-center h-full min-h-[300px]">
+                  <span className="text-muted-foreground">Loading...</span>
                 </div>
               ) : files.length === 0 ? (
-                <div className="text-center text-muted-foreground p-6">
-                  No files found
+                <div className="flex items-center justify-center h-full min-h-[300px]">
+                  <span className="text-muted-foreground">No files found</span>
                 </div>
               ) : (
                 <FileList 
                   files={files} 
                   selectedFile={selectedFile || ''}
                   onFileSelect={(file) => setSelectedFile(file.name)}
-                  className="bg-card"
+                  className="min-h-[300px]"
                 />
               )
             ) : (
               <VectorStoreList
-                vectorStores={[
-                  {
-                    id: 'vs-1',
-                    metadata: {
-                      type: 'text',
-                      language: 'en',
-                      tokens: 1250,
-                      similarity_threshold: 0.85
-                    },
-                    createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-                  },
-                  {
-                    id: 'vs-2',
-                    metadata: {
-                      type: 'code',
-                      language: 'python',
-                      tokens: 850,
-                      similarity_threshold: 0.9
-                    },
-                    createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
-                  },
-                  {
-                    id: 'vs-3',
-                    metadata: {
-                      type: 'pdf',
-                      pages: 15,
-                      tokens: 3200,
-                      similarity_threshold: 0.8
-                    },
-                    createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString()
-                  }
-                ]}
+                vectorStores={vectorStores}
                 selectedVectorStore={selectedVectorStore}
                 onVectorStoreSelect={(vectorStore) => setSelectedVectorStore(vectorStore.id)}
-                className="bg-card"
+                className="min-h-[300px]"
               />
             )}
           </div>
@@ -145,17 +166,18 @@ export const StoragePage: FC = () => {
               />
             )
           ) : (
-            selectedVectorStore && (
-              <VectorStoreDetailsPanel
-                vectorStore={{
-                  id: selectedVectorStore,
-                  metadata: {},
-                  createdAt: new Date().toISOString()
-                }}
-                onDelete={async () => {}}
-                isDeleting={false}
-              />
-            )
+            <VectorStoreDetailsPanel
+              vectorStore={selectedVectorStore ? {
+                id: selectedVectorStore,
+                metadata: {},
+                createdAt: new Date().toISOString()
+              } : undefined}
+              onDelete={async () => {}}
+              isDeleting={false}
+              isCreating={isCreatingMode}
+              onCreate={handleCreateVectorStore}
+              isCreatingStore={isCreatingVectorStore}
+            />
           )}
         </div>
       </div>

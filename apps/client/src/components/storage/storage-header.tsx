@@ -1,4 +1,4 @@
-import { FC } from 'react';
+import { FC, useState } from 'react';
 import { Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tab, Tabs } from '@/components/ui/tabs';
@@ -9,14 +9,19 @@ interface StorageHeaderProps {
   onTabChange: (tab: 'files' | 'vectorStores') => void;
   onUpload: (file: File) => Promise<void>;
   isUploading: boolean;
+  onCreateVectorStore?: () => Promise<void>;
+  isCreatingVectorStore?: boolean;
 }
 
 export const StorageHeader: FC<StorageHeaderProps> = ({
   activeTab,
   onTabChange,
   onUpload,
-  isUploading
+  isUploading,
+  onCreateVectorStore,
+  isCreatingVectorStore
 }) => {
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const handleFileSelect = () => {
     const input = document.createElement('input');
     input.type = 'file';
@@ -52,7 +57,7 @@ export const StorageHeader: FC<StorageHeaderProps> = ({
         Storage
       </h1>
       
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 sm:gap-6">
         <Tabs className="-mb-px">
           <Tab 
             label="Files" 
@@ -67,25 +72,39 @@ export const StorageHeader: FC<StorageHeaderProps> = ({
         </Tabs>
         
         <div className="flex gap-3">
-          <Button 
-            variant="default" 
-            size="sm"
-            className="gap-2 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105 group"
-            onClick={handleFileSelect}
-            disabled={isUploading}
-          >
-            <Upload size={16} className="transition-transform duration-200 group-hover:scale-110 group-hover:rotate-6" />
-            {isUploading ? 'Uploading...' : 'Upload'}
-          </Button>
-          <Tooltip content="Learn about vector stores and how to organize your files efficiently">
-            <Button 
-              variant="outline" 
+          {activeTab === 'files' ? (
+            <>
+              <Button 
+                variant="default" 
+                size="sm"
+                className="gap-2 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105 group min-w-[100px]"
+                onClick={handleFileSelect}
+                disabled={isUploading}
+              >
+                <Upload size={16} className="transition-transform duration-200 group-hover:scale-110 group-hover:rotate-6" />
+                {isUploading ? 'Uploading...' : 'Upload'}
+              </Button>
+              <Tooltip content="Learn about vector stores and how to organize your files efficiently">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105 hover:bg-accent/20 min-w-[100px]"
+                >
+                  Learn more
+                </Button>
+              </Tooltip>
+            </>
+          ) : (
+            <Button
+              variant="default"
               size="sm"
-              className="shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105 hover:bg-accent/20"
+              className="gap-2 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105 group min-w-[150px]"
+              onClick={onCreateVectorStore}
+              disabled={isCreatingVectorStore}
             >
-              Learn more
+              {isCreatingVectorStore ? 'Creating...' : 'Create Vector Store'}
             </Button>
-          </Tooltip>
+          )}
         </div>
       </div>
     </>
