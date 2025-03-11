@@ -128,7 +128,7 @@ export const StoragePage: FC = () => {
           isCreatingVectorStore={isCreatingVectorStore}
         />
         
-        <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 min-h-[calc(100vh-200px)]">
+        <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
           <div className="flex-1 transition-all duration-200 ease-in-out border rounded-lg shadow-sm bg-card overflow-hidden">
             {activeTab === 'files' ? (
               isLoading ? (

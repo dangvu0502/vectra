@@ -175,3 +175,7 @@ dist
 secrets
 
 pnpm-lock.yaml
+
+#server stuffs
+**/uploads
+**/**/fixtures

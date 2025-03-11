@@ -1,6 +1,10 @@
 {
   "compilerOptions": {
     // Enable latest features
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    },
     "lib": ["ESNext", "DOM"],
     "target": "ESNext",
     "module": "ESNext",
