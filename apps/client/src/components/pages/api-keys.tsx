@@ -8,7 +8,7 @@ export const ApiKeysPage: FC = () => {
           <h1 className="text-2xl font-semibold text-primary transition-colors duration-200">API keys</h1>
           
           <div className="flex justify-between items-center">
-            <p className="text-muted-foreground">Manage your API keys for accessing the Embeddy API</p>
+            <p className="text-muted-foreground">Manage your API keys for accessing the QueryCub API</p>
             
             <div className="flex gap-3">
               <Button 

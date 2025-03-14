@@ -1,5 +1,5 @@
 {
-  "name": "embeddy",
+  "name": "querycub",
   "private": true,
   "scripts": {
     "dev": "concurrently \"npm:dev:server\" \"npm:dev:client\" --names \"[server],[client]\" --prefix-colors \"blue.bold,green.bold\" --prefix \"{name}\"",

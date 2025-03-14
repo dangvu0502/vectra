@@ -25,7 +25,7 @@ export const Sidebar: FC<SidebarProps> = ({ className }) => {
     >
       <div className="flex items-center h-12 mb-6 px-2">
         <span className="text-xl font-semibold text-sidebar-primary hover:text-primary transition-colors duration-200 cursor-default">
-          Embeddy
+          QueryCub
         </span>
       </div>
       <div className="flex-1 space-y-1.5">
