@@ -2,7 +2,7 @@
   "name": "querycub",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"npm:dev:server\" \"npm:dev:client\" --names \"[server],[client]\" --prefix-colors \"blue.bold,green.bold\" --prefix \"{name}\"",
+    "dev": "concurrently \"pnpm:dev:server\" \"pnpm:dev:client\" --names \"[server],[client]\" --prefix-colors \"blue.bold,green.bold\" --prefix \"{name}\"",
     "dev:server": "cd server && pnpm run dev",
     "dev:client": "cd apps/client && pnpm run dev"
   },
