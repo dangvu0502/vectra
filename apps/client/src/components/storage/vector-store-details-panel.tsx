@@ -146,7 +146,7 @@ export const VectorStoreDetailsPanel: FC<VectorStoreDetailsPanelProps> = ({
       <DetailsPanel
         title={"Vector Store"}
         actions={actions}
-        className="w-[400px] lg:w-[450px] rounded-lg border border-border shadow-sm overflow-hidden flex-shrink-0"
+        className="w-[320px] rounded-lg border border-border shadow-sm overflow-hidden flex-shrink-0"
       >
         {isCreating ? (
             <div className="flex items-center gap-2">
@@ -157,10 +157,10 @@ export const VectorStoreDetailsPanel: FC<VectorStoreDetailsPanelProps> = ({
                   onChange={(e) => setName(e.target.value)}
                   onBlur={() => setIsEditing(false)}
                   autoFocus
-                  className="flex-1 bg-transparent text-2xl font-semibold text-foreground focus:outline-none border-b border-primary px-0"
+                  className="flex-1 bg-transparent text-xl font-semibold text-foreground focus:outline-none border-b border-primary px-0"
                 />
               ) : (
-                <h2 className="text-2xl font-semibold text-foreground flex-1">{name}</h2>
+                <h2 className="text-xl font-semibold text-foreground flex-1">{name}</h2>
               )}
               <button
                 onClick={() => setIsEditing(true)}
@@ -172,50 +172,50 @@ export const VectorStoreDetailsPanel: FC<VectorStoreDetailsPanelProps> = ({
           
         ) : (
           <>
-            <DetailItem label="Name" className="mb-2">
+            <DetailItem label="Name" className="mb-1">
               <span className="font-medium text-foreground">
                 {vectorStore?.name || 'Untitled vector store'}
               </span>
             </DetailItem>
 
-            <DetailItem label="Status" className="mb-2">
+            <DetailItem label="Status" className="mb-1">
               <StatusIndicator status="active" />
             </DetailItem>
           </>
         )}
 
-        <DetailItem label="Size">
+        <DetailItem label="Size" className="mb-1">
           <span className="text-sm text-muted-foreground">
             {vectorStore?.size || '0 KB'}
           </span>
         </DetailItem>
 
-        <DetailItem label="Documents">
+        <DetailItem label="Documents" className="mb-1">
           <span className="text-sm text-muted-foreground">
             {vectorStore?.fileCount || 0} files
           </span>
         </DetailItem>
 
-        <DetailItem label="Usage">
+        <DetailItem label="Usage" className="mb-1">
           <span className="text-sm text-muted-foreground">
             {vectorStore?.usage || '0 KB'} / month
           </span>
         </DetailItem>
 
-        <DetailItem label="Last Active">
+        <DetailItem label="Last Active" className="mb-1">
           <span className="text-sm text-muted-foreground">
             {vectorStore?.lastUpdated ? new Date(vectorStore.lastUpdated).toLocaleString() : 'Never'}
           </span>
         </DetailItem>
 
-        <DetailItem label="Created At">
+        <DetailItem label="Created At" className="mb-1">
           <span className="text-sm text-muted-foreground">
             {vectorStore?.createdAt ? new Date(vectorStore.createdAt).toLocaleString() : 'Never'}
           </span>
         </DetailItem>
 
         <DetailItem label="Metadata">
-          <pre className="text-sm text-muted-foreground bg-muted p-2 rounded-md overflow-auto w-full mt-2">
+          <pre className="text-xs text-muted-foreground bg-muted p-2 rounded-md overflow-auto w-full mt-1 max-h-[100px]">
             {JSON.stringify(vectorStore?.metadata ?? {}, null, 2)}
           </pre>
         </DetailItem>

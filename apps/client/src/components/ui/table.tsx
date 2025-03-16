@@ -5,6 +5,7 @@ interface TableColumn<T> {
   header: string;
   key: keyof T;
   render?: (item: T) => ReactNode;
+  className?: string;
 }
 
 interface TableProps<T> {
@@ -33,7 +34,10 @@ export const Table = <T extends Record<string, any>>({
               {columns.map((column) => (
                 <th 
                   key={String(column.key)} 
-                  className="px-4 py-3 text-left text-sm font-medium text-muted-foreground hover:text-foreground transition-colors duration-200"
+                  className={cn(
+                    "px-4 py-3 text-left text-sm font-medium text-muted-foreground hover:text-foreground transition-colors duration-200",
+                    column.className
+                  )}
                 >
                   {column.header}
                 </th>
@@ -53,7 +57,10 @@ export const Table = <T extends Record<string, any>>({
                 {columns.map((column) => (
                   <td 
                     key={String(column.key)} 
-                    className="px-4 py-3 text-sm text-muted-foreground hover:text-foreground transition-colors duration-200"
+                    className={cn(
+                      "px-4 py-3 text-sm text-muted-foreground hover:text-foreground transition-colors duration-200",
+                      column.className
+                    )}
                   >
                     {column.render ? column.render(item) : String(item[column.key])}
                   </td>

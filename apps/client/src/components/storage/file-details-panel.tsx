@@ -48,9 +48,9 @@ export const FileDetailsPanel: FC<FileDetailsPanelProps> = ({
       title={file.name}
       subtitle="FILE"
       actions={actions}
-      className="w-[400px] lg:w-[450px] rounded-lg border border-border shadow-sm overflow-hidden flex-shrink-0"
+      className="w-[320px] rounded-lg border border-border shadow-sm overflow-hidden flex-shrink-0"
     >
-      <DetailItem label="Status" className="mb-2">
+      <DetailItem label="Status" className="mb-1">
         <div className="flex items-center gap-2">
           <div className={`w-2 h-2 rounded-full transition-colors duration-200 ${
             file.status === 'ready' ? 'bg-green-500' : 
@@ -63,17 +63,17 @@ export const FileDetailsPanel: FC<FileDetailsPanelProps> = ({
         </div>
       </DetailItem>
       
-      <DetailItem label="File ID" className="mb-2">
+      <DetailItem label="File ID" className="mb-1">
         <span className="font-mono text-xs bg-muted px-2 py-1 rounded transition-colors duration-200">
           {file.id}
         </span>
       </DetailItem>
       
-      <DetailItem label="Size" className="mb-2">
+      <DetailItem label="Size" className="mb-1">
         <span className="font-medium">{file.size}</span>
       </DetailItem>
       
-      <DetailItem label="Created at" className="mb-2">
+      <DetailItem label="Created at" className="mb-1">
         <span className="font-medium">{file.createdAt}</span>
       </DetailItem>
 
@@ -87,13 +87,13 @@ export const FileDetailsPanel: FC<FileDetailsPanelProps> = ({
           </div>
         }
       >
-        <div className="space-y-2">
+        <div className="space-y-1">
           {file.vectorStores && file.vectorStores.length > 0 ? (
             <div className="space-y-1">
               {file.vectorStores.map(store => (
                 <div 
                   key={store.id}
-                  className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200 flex items-center gap-2"
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors duration-200 flex items-center gap-2"
                 >
                   <span className="w-1.5 h-1.5 rounded-full bg-primary/50" />
                   {store.name}
@@ -101,7 +101,7 @@ export const FileDetailsPanel: FC<FileDetailsPanelProps> = ({
               ))}
             </div>
           ) : (
-            <span className="text-sm text-muted-foreground">
+            <span className="text-xs text-muted-foreground">
               Not used in any vector stores
             </span>
           )}
