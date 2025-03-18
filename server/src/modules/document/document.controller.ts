@@ -44,7 +44,14 @@ export class DocumentController {
 
     async query(req: Request, res: Response) {
         try {
-            const validated = querySchema.parse(req.query);
+            const validated = querySchema.parse({
+                q: req.query.q,
+                page: req.query.page ? parseInt(req.query.page as string, 10) : 1,
+                limit: req.query.limit ? parseInt(req.query.limit as string, 10) : 10,
+                sortBy: req.query.sortBy || 'createdAt',
+                sortOrder: req.query.sortOrder || 'desc'
+            });
+
             const result = await this.documentService.query({
                 q: validated.q,
                 page: validated.page,
