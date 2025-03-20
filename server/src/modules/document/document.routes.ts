@@ -1,9 +1,7 @@
+import { documentController } from '@/modules/document';
 import { DEFAULT_CONFIG } from '@/modules/document/config';
-import { DocumentController } from '@/modules/document/document.controller';
 import { Router } from 'express';
 import multer from 'multer';
-
-const documentController = new DocumentController();
 
 const router = Router();
 const upload = multer({

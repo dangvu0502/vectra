@@ -1,14 +1,37 @@
 import type { Request, Response } from 'express';
 import fs from 'fs/promises';
 import { z } from 'zod';
-import { DocumentNotFoundError } from '@/modules/document/core/errors';
-import type { Document } from '@/modules/document/core/types';
-import { DocumentService } from '@/modules/document/document.service';
-import { querySchema, documentSchema } from '@/modules/document/document.schema';
+import {
+    DocumentNotFoundError,
+    type Document,
+    type DocumentService,
+    documentSchema,
+    querySchema
+} from '@/modules/document';
 
 export class DocumentController {
-    private documentService: DocumentService = DocumentService.getInstance();
+    private static instance: DocumentController | null = null;
+    private readonly documentService: DocumentService;
 
+    private constructor(documentService: DocumentService) {
+        this.documentService = documentService;
+    }
+
+    static getInstance(documentService: DocumentService): DocumentController {
+        if (!DocumentController.instance) {
+            DocumentController.instance = new DocumentController(documentService);
+        }
+        return DocumentController.instance;
+    }
+
+    static resetInstance(): void {
+        DocumentController.instance = null;
+    }
+
+    /**
+     * Upload a document and generate embeddings
+     * The embedding generation happens automatically via middleware
+     */
     async upload(req: Request & { file?: Express.Multer.File }, res: Response) {
         try {
             if (!req.file) {
@@ -22,9 +45,19 @@ export class DocumentController {
             const doc = await this.documentService.upload(req.file, content);
             const validatedDoc = documentSchema.parse(doc);
 
+            // Include information about embedding status in response
+            const embeddingStatus = doc.metadata?.embeddingsCreated
+                ? { embeddingStatus: 'success', embeddingTimestamp: doc.metadata.embeddingsTimestamp }
+                : doc.metadata?.embeddingError
+                    ? { embeddingStatus: 'error', embeddingError: doc.metadata.embeddingError }
+                    : { embeddingStatus: 'unknown' };
+
             res.status(201).json({
                 status: 'success',
-                data: validatedDoc
+                data: {
+                    ...validatedDoc,
+                    embedding: embeddingStatus
+                }
             });
         } catch (error) {
             if (error instanceof z.ZodError) {

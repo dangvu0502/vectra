@@ -1,4 +1,4 @@
-import type { Document, QueryOptions } from '@/modules/document/core/types';
+import type { Document, QueryOptions } from '@/modules/document/types';
 import { z, ZodType } from 'zod';
 
 export const documentSchema = z.object({
