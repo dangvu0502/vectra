@@ -62,24 +62,34 @@ export function AppChat({ knowledgeSource }: AppChatProps) {
     setInputValue('');
     setIsLoading(true);
 
-    // Simulate an API call and AI response
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    try {
+      const response = await fetch('/api/v1/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message: inputValue }),
+      });
 
-    let aiResponse: Message;
-    
-    if (knowledgeSource?.name) {
-      aiResponse = {
-        text: `This is a simulated AI response using knowledge from "${knowledgeSource.name}".`,
+      if (!response.ok) {
+        throw new Error('Failed to get response');
+      }
+
+      const data = await response.json();
+      
+      const aiResponse: Message = {
+        text: data.response,
         sender: 'ai',
       };
-    } else {
-      aiResponse = {
-        text: 'This is a simulated AI response.',
+
+      setMessages((prevMessages) => [...prevMessages, aiResponse]);
+    } catch (error) {
+      const errorResponse: Message = {
+        text: 'Sorry, there was an error processing your request.',
         sender: 'ai',
       };
+      setMessages((prevMessages) => [...prevMessages, errorResponse]);
     }
-
-    setMessages((prevMessages) => [...prevMessages, aiResponse]);
     setIsLoading(false);
   };
 
