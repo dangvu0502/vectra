@@ -1,102 +1,148 @@
+import fs from 'fs/promises';
+import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import type { Document, QueryOptions, QueryResult } from './types';
-import { DocumentEmbedding } from './embedding';
-import { DocumentNotFoundError } from './errors';
+import { DocumentConfig } from '../core/config';
+import type { QueryOptions, QueryResult } from './types';
+import { DocumentModel, querySchema } from './document.model'; // Import Mongoose model
+import type { IDocument } from './document.model';
+import type { HydratedDocument } from 'mongoose';
 
-export class DocumentService {
-    private static instance: DocumentService | null = null;
-    private documents: Map<string, Document>;
-    private embedding: DocumentEmbedding;
+// Define a separate interface for the data stored in MongoDB (without content)
+export interface DocumentMetadata {
+  id: string;
+  filename: string;
+  path: string;
+  createdAt: Date;
+  metadata?: Record<string, unknown>;
+}
 
-    private constructor() {
-        this.documents = new Map();
-        this.embedding = new DocumentEmbedding();
+interface DocumentWithContent extends DocumentMetadata {
+  content: string;
+}
+
+// Output Port (Interface)
+export interface DocumentService {
+    upload(file: Express.Multer.File, content: string): Promise<IDocument>; // Return IDocument
+    query(options: QueryOptions): Promise<QueryResult<DocumentWithContent>>;
+    findById(id: string): Promise<IDocument | null>; // Return IDocument
+    delete(id: string): Promise<void>;
+}
+
+// Concrete Implementation
+export class DocumentServiceImpl implements DocumentService {
+  private static instance: DocumentServiceImpl | null = null;
+
+  private constructor() {}
+
+  static getInstance(): DocumentServiceImpl {
+    if (!DocumentServiceImpl.instance) {
+      DocumentServiceImpl.instance = new DocumentServiceImpl();
     }
+    return DocumentServiceImpl.instance;
+  }
 
-    static getInstance(): DocumentService {
-        if (!DocumentService.instance) {
-            DocumentService.instance = new DocumentService();
-        }
-        return DocumentService.instance;
-    }
+  static resetInstance(): void {
+    DocumentServiceImpl.instance = null;
+  }
 
-    static resetInstance(): void {
-        DocumentService.instance = null;
-    }
+  async upload(file: Express.Multer.File, content: string): Promise<IDocument> {
+      const docId = uuidv4();
+      const extension = path.extname(file.originalname);
+      const newFilename = `${docId}${extension}`;
+      const newPath = path.join(DocumentConfig.upload.directory, newFilename);
 
-    async upload(file: Express.Multer.File, content: string): Promise<Document> {
-        const doc: Document = {
-            id: uuidv4(),
-            filename: file.originalname,
-            path: file.path,
-            content,
-            createdAt: new Date(),
-            metadata: {
-                originalSize: content.length,
-                mimeType: file.mimetype
-            }
-        };
+      // Rename the uploaded file to include the extension and save to DB
+      try {
+          await fs.rename(file.path, newPath);
 
-        await this.embedding.processDocument(doc);
-        this.documents.set(doc.id, doc);
-        return doc;
-    }
+          const doc = {
+              id: docId,
+              filename: file.originalname, // Store original filename
+              path: newPath,
+              content: content, // Store the content
+              createdAt: new Date(),
+              metadata: {
+                  originalSize: file.size, // Use file.size for actual size
+                  mimeType: file.mimetype
+              }
+          };
 
-    async query(options: QueryOptions = {}): Promise<QueryResult> {
-        const {
-            q,
-            page = 1,
-            limit = 10,
-            sortBy = 'createdAt',
-            sortOrder = 'desc'
-        } = options;
+          const createdDocument = await DocumentModel.create(doc);
+          return createdDocument; //return the mongoose document
+      } catch (error) {
+          console.error("Error in upload:", error);
+          throw error; // Re-throw the error for handling in the controller
+      }
+  }
 
-        let documents = Array.from(this.documents.values());
+  async query(options: QueryOptions = {}): Promise<QueryResult<DocumentWithContent>> {
+    const {
+      q,
+      page = 1,
+      limit = 10,
+      sortBy = 'createdAt',
+      sortOrder = 'desc'
+    } = querySchema.parse(options);
 
-        if (q) {
-            const results = await this.embedding.search(q, documents.length);
-            const resultIds = new Set(results.map(r => r.id));
-            documents = documents.filter(doc => resultIds.has(doc.id));
-        }
+    const skip = (+page - 1) * +limit;
 
-        // Sort documents
-        documents.sort((a, b) => {
-            const valueA = a[sortBy as keyof Document];
-            const valueB = b[sortBy as keyof Document];
+    // Build the query filter based on 'q' (if provided)
+    const filter = q ? { $text: { $search: q } } : {};
 
-            if (valueA instanceof Date && valueB instanceof Date) {
-                return sortOrder === 'asc'
-                    ? valueA.getTime() - valueB.getTime()
-                    : valueB.getTime() - valueA.getTime();
-            }
+    try {
+        const documents = await DocumentModel.find(filter)
+          .sort({ [sortBy]: sortOrder === 'asc' ? 1 : -1 })
+          .skip(skip)
+          .limit(+limit)
+          .exec();
 
-            if (typeof valueA === 'string' && typeof valueB === 'string') {
-                return sortOrder === 'asc'
-                    ? valueA.localeCompare(valueB)
-                    : valueB.localeCompare(valueA);
-            }
+        const total = await DocumentModel.countDocuments(filter);
 
-            return 0;
-        });
-
-        const startIndex = (page - 1) * limit;
-        const paginatedDocs = documents.slice(startIndex, startIndex + limit);
+        // Convert Mongoose documents to plain objects, including content
+        const formattedDocuments: DocumentWithContent[] = documents.map(doc => ({
+            id: doc.id,
+            filename: doc.filename,
+            path: doc.path,
+            createdAt: doc.createdAt,
+            content: doc.content, // Include content
+            metadata: doc.metadata as Record<string, unknown>
+        }));
 
         return {
-            documents: paginatedDocs,
-            total: documents.length
+          documents: formattedDocuments,
+          total
         };
+    } catch (error) {
+        console.error("Error in query:", error);
+        throw error; // Re-throw for handling in controller
     }
+  }
 
-    async findById(id: string): Promise<Document | null> {
-        return this.documents.get(id) || null;
-    }
+  async findById(id: string): Promise<IDocument | null> { // Return IDocument
+      try {
+          const doc = await DocumentModel.findOne({ id: id }).exec();
+          return doc; // Return the Mongoose document directly
+      } catch (error) {
+          console.error("Error in findById:", error);
+          throw error;
+      }
+  }
 
-    async delete(id: string): Promise<void> {
-        if (!this.documents.has(id)) {
-            throw new DocumentNotFoundError(id);
+  async delete(id: string): Promise<void> {
+    try {
+        const result = await DocumentModel.deleteOne({ id: id }).exec();
+        if (result.deletedCount === 0) {
+          console.warn(`Document with id "${id}" not found for deletion.`);
         }
-        await this.embedding.deleteDocument(id);
-        this.documents.delete(id);
+        // Optionally, also delete the file from the filesystem
+        const doc = await DocumentModel.findOne({id});
+        if (doc) {
+          await fs.unlink(doc.path);
+        }
+
+    } catch (error) {
+        console.error("Error in delete:", error);
+        throw error; // Re-throw for handling in controller
     }
+  }
 }

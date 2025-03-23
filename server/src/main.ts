@@ -1,7 +1,8 @@
 import express from 'express';
 import morgan from 'morgan';
-import { documentRoutes } from '@/modules/document';
-import { chatRoutes } from '@/modules/chat';
+import { chatRoutes } from './modules/chat';
+import { connectDB } from './modules/db/mongodb';
+import { documentRoutes } from './modules/document'; // Updated import paths
 
 const app = express();
 
@@ -19,7 +20,10 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
   });
 });
 
-// Mount routes
+// Connect to MongoDB
+connectDB();
+
+// Mount routes using controllers
 app.use('/api/v1/documents', documentRoutes);
 app.use('/api/v1/chat', chatRoutes);
 

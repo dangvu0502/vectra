@@ -1,7 +1,12 @@
-import { ChatController } from '@/modules/chat/chat.controller';
-import { ChatService } from '@/modules/chat/chat.service';
+import { ChatController } from './chat.controller';
+import { ChatServiceImpl } from './chat.service';
+import { DocumentAdapter } from '../adapters/documentAdapter'; // Import the adapters
+import { EmbeddingAdapter } from '../adapters/embeddingAdapter';
 
-export const chatService = ChatService.getInstance();
+const documentAdapter = new DocumentAdapter();
+const embeddingAdapter = new EmbeddingAdapter(documentAdapter);
+const chatService = ChatServiceImpl.getInstance(embeddingAdapter);
+
 export const chatController = ChatController.getInstance(chatService);
 
 export * from './chat.service';

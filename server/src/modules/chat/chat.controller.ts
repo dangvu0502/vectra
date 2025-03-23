@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
-import { DocumentEmbedding } from '../document/embedding';
-import { ChatService } from './chat.service';
+// import { DocumentEmbedding } from '../document/embedding'; // Removed unused import
+import type { ChatService } from './chat.service';
 
 export class ChatController {
   private static instance: ChatController | null;
@@ -23,13 +23,13 @@ export class ChatController {
 
   async chat(req: Request, res: Response): Promise<void> {
     try {
-      const { message } = req.body;
+      const { message, docId } = req.body;
       if (!message) {
         res.status(400).json({ error: 'Message is required' });
         return;
       }
 
-      const response = await this.chatService.chat(message);
+      const response = await this.chatService.chat(message, docId);
       res.json({ response });
     } catch (error) {
       console.error('Error in chat controller:', error);

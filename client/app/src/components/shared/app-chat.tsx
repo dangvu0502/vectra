@@ -3,6 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Loader2, Send, Database, FileText, Sparkles } from 'lucide-react';
 import { Tooltip } from '@/components/ui/tooltip';
+import { chat } from '@/api/services/chat';
 
 interface Message {
   text: string;
@@ -37,9 +38,9 @@ export function AppChat({ knowledgeSource }: AppChatProps) {
         sender: 'ai'
       });
     } else {
-      welcomeMessages.push({ 
-        text: 'Ask me anything about Claude.', 
-        sender: 'ai' 
+      welcomeMessages.push({
+        text: 'Ask me anything about Claude.',
+        sender: 'ai'
       });
     }
 
@@ -63,22 +64,11 @@ export function AppChat({ knowledgeSource }: AppChatProps) {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/v1/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ message: inputValue }),
-      });
+      const docId = knowledgeSource?.type === 'file' ? knowledgeSource.id! : undefined;
+      const response = await chat(inputValue, docId);
 
-      if (!response.ok) {
-        throw new Error('Failed to get response');
-      }
-
-      const data = await response.json();
-      
       const aiResponse: Message = {
-        text: data.response,
+        text: response,
         sender: 'ai',
       };
 
@@ -116,7 +106,7 @@ export function AppChat({ knowledgeSource }: AppChatProps) {
           <div className="mt-4">
             <h2 className="text-lg font-semibold">Example Questions</h2>
             <div className="mt-2 space-y-2">
-              <button 
+              <button
                 className="px-4 py-2 rounded-lg bg-muted dark:bg-zinc-800 text-muted-foreground dark:text-zinc-200 w-fit hover:bg-accent dark:hover:bg-zinc-700 transition-colors block text-left"
                 onClick={() => {
                   setInputValue("How do I create structured JSON output?");
@@ -125,7 +115,7 @@ export function AppChat({ knowledgeSource }: AppChatProps) {
               >
                 How do I create structured JSON output?
               </button>
-              <button 
+              <button
                 className="px-4 py-2 rounded-lg bg-muted dark:bg-zinc-800 text-muted-foreground dark:text-zinc-200 w-fit hover:bg-accent dark:hover:bg-zinc-700 transition-colors block text-left"
                 onClick={() => {
                   setInputValue("For few shot prompting, how do I pick examples?");
@@ -134,7 +124,7 @@ export function AppChat({ knowledgeSource }: AppChatProps) {
               >
                 For few shot prompting, how do I pick examples?
               </button>
-              <button 
+              <button
                 className="px-4 py-2 rounded-lg bg-muted dark:bg-zinc-800 text-muted-foreground dark:text-zinc-200 w-fit hover:bg-accent dark:hover:bg-zinc-700 transition-colors block text-left"
                 onClick={() => {
                   setInputValue("How can I prompt Claude to reply a user's language?");
