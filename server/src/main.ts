@@ -3,10 +3,8 @@ import morgan from 'morgan';
 import cors from 'cors';
 import session from 'express-session';
 import { documentRoutes } from '@/modules/document';
-
 import { passport } from './modules/auth';
 import type { UserProfile } from './modules/auth';
-import { pool } from './db'; // Import the database pool
 
 const app = express();
 const port = process.env.PORT || 3001;

@@ -1,6 +1,6 @@
 import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
-import { pool } from '../../db'; // Import the database pool
+import { db } from '../../db';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -26,28 +26,26 @@ passport.use(
     async (accessToken, refreshToken, profile, done) => {
       try {
         // Check if the user already exists
-        const existingUser = await pool.query(
-          'SELECT * FROM users WHERE provider = $1 AND provider_id = $2',
-          ['google', profile.id]
-        );
+        const existingUser = await db('users')
+          .where({ provider: 'google', provider_id: profile.id })
+          .first();
 
-        if (existingUser.rows.length > 0) {
-          return done(null, existingUser.rows[0]);
+        if (existingUser) {
+          return done(null, existingUser);
         }
 
         // Create a new user
-        const newUser = await pool.query(
-          'INSERT INTO users (provider, provider_id, email, display_name, profile_picture_url) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-          [
-            'google',
-            profile.id,
-            profile.emails ? profile.emails[0].value : null, // Ensure email is handled
-            profile.displayName,
-            profile.photos ? profile.photos[0].value : null, // Ensure photo is handled
-          ]
-        );
-
-        return done(null, newUser.rows[0]);
+        const newUser = await db('users')
+          .insert({
+            provider: 'google',
+            provider_id: profile.id,
+            email: profile.emails ? profile.emails[0].value : null, // Ensure email is handled
+            display_name: profile.displayName,
+            profile_picture_url: profile.photos ? profile.photos[0].value : null, // Ensure photo is handled
+          })
+          .returning('*');
+          
+        return done(null, newUser[0]);
       } catch (error) {
         return done(error);
       }
@@ -63,12 +61,11 @@ passport.serializeUser((user: any, done) => {
 // Deserialize user
 passport.deserializeUser(async (id: string, done) => {
   try {
-    const user = await pool.query('SELECT * FROM users WHERE id = $1', [id]);
+    const user = await db('users').where({ id }).first();
     // Use the custom interface
-    done(null, user.rows[0] as UserProfile);
+    done(null, user as UserProfile);
   } catch (error) {
     done(error);
   }
 });
-
 export { passport };
