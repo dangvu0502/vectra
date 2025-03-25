@@ -35,12 +35,12 @@ app.use('/api/v1/documents', documentRoutes);
 
 // Google authentication routes
 app.get(
-  '/auth/google',
+  '/api/auth/google',
   passport.authenticate('google', { scope: ['profile', 'email'] })
 );
 
 app.get(
-  '/auth/google/callback',
+  '/api/auth/google/callback',
   passport.authenticate('google', { failureRedirect: '/' }), // Redirect to home on failure
   (req, res) => {
     // Successful authentication, redirect or send response
