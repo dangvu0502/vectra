@@ -8,6 +8,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { FaGithub } from 'react-icons/fa';
+import { FcGoogle } from 'react-icons/fc';
 
 interface AuthModalProps {
     children: React.ReactNode;
@@ -21,19 +25,48 @@ export const AuthModal: React.FC<AuthModalProps> = ({ children, triggerText = "S
         {children ? children : <button>{triggerText}</button>}
       </DialogTrigger>
       <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Sign In</DialogTitle>
+        <DialogHeader className="text-center">
+          <DialogTitle className="text-2xl font-bold">Sign in to your account</DialogTitle>
           <DialogDescription>
-            Choose your preferred sign-in method
+            Don't have an account? <a href="#" className="underline font-medium text-primary">Sign up</a>
           </DialogDescription>
         </DialogHeader>
-        <div className="flex flex-col space-y-4">
-          <a
-            href="/api/auth/google"
-            className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+        <div className="grid gap-4 py-4">
+          {/* GitHub Button */}
+          <Button variant="outline" className="w-full bg-gray-900 text-white hover:bg-gray-800">
+            <FaGithub className="mr-2 h-4 w-4" />
+            Sign in with GitHub
+          </Button>
+          {/* Google Button */}
+          <Button
+            variant="outline"
+            className="w-full border border-gray-300 hover:bg-gray-100"
+            onClick={() => {
+              window.location.href = '/api/auth/google';
+            }}
           >
+            <FcGoogle className="mr-2 h-4 w-4" />
             Sign in with Google
-          </a>
+          </Button>
+
+          {/* Divider */}
+          <div className="relative my-4">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-gray-300" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground"> {/* Updated background/text for divider */}
+                Or continue with
+              </span>
+            </div>
+          </div>
+
+          {/* Email Input */}
+          <div className="grid gap-2">
+            <label htmlFor="email-magic" className="text-sm font-medium text-gray-700">Email</label>
+            <Input id="email-magic" type="email" placeholder="m@example.com" required />
+          </div>
+
         </div>
       </DialogContent>
     </Dialog>
