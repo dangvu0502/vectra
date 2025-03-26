@@ -1,49 +1,34 @@
-import type { Document as DocumentData, QueryOptions } from '@/modules/document/types'; // Renamed import
-import { z, ZodType } from 'zod';
-import mongoose, { Schema, Document } from 'mongoose';
+import { z } from 'zod';
 
-// Mongoose Schema
-// Extend the 'DocumentData' interface and mongoose.Document
-export interface IDocument extends Omit<DocumentData, 'id'>, mongoose.Document {
-  _id: mongoose.Types.ObjectId; // Use _id for Mongoose compatibility
-  id: string; // Keep string id
-}
-
-const DocumentSchema: Schema = new Schema({
-    id: { type: String, required: true, unique: true }, // Keep the 'id' field for your application logic
-    filename: { type: String, required: true }, // Original filename
-    path: { type: String, required: true },
-    content: {type: String, required: true },
-    createdAt: { type: Date, required: true, default: Date.now },
-    metadata: {
-        originalSize: { type: Number, required: true },
-        mimeType: { type: String, required: true },
-        embeddingsCreated: { type: Boolean, default: false },
-        embeddingsTimestamp: { type: Date },
-        embeddingError: { type: String },
-    }
-});
-
-DocumentSchema.index({ 'metadata.embeddings': '2dsphere' });
-
-export const DocumentModel = mongoose.model<IDocument>('Document', DocumentSchema);
-
-// Zod Schemas
+// Document Schema for validation
 export const documentSchema = z.object({
-    id: z.string().min(1),
-    filename: z.string().min(1),
-    path: z.string().min(1),
-    content: z.string(),
-    createdAt: z.date(),
-    metadata: z.record(z.string(), z.unknown()).optional()
-}).strict() satisfies ZodType<DocumentData>;
+  id: z.string().uuid(),
+  filename: z.string().min(1),
+  path: z.string().min(1),
+  content: z.string(),
+  metadata: z.object({
+    originalSize: z.number(),
+    mimeType: z.string(),
+    embeddingsCreated: z.boolean().default(false),
+    embeddingsTimestamp: z.date().optional(),
+    embeddingError: z.string().optional()
+  }),
+  created_at: z.date(),
+  updated_at: z.date()
+}).strict();
 
+export type Document = z.infer<typeof documentSchema>;
+
+// Query options schema
 export const querySchema = z.object({
-    q: z.string().optional(),
-    page: z.string()
-        .optional(),
-    limit: z.string()
-        .optional(),
-    sortBy: z.enum(Object.keys(documentSchema.shape) as [keyof DocumentData, ...Array<keyof DocumentData>]).optional(),
-    sortOrder: z.enum(['asc', 'desc']).optional()
-}).strict() satisfies ZodType<QueryOptions>;
+  q: z.string().optional(),
+  page: z.string().optional(),
+  limit: z.string().optional(),
+  sortBy: z.enum(['filename', 'created_at', 'updated_at']).optional(),
+  sortOrder: z.enum(['asc', 'desc']).optional()
+}).strict();
+
+export type QueryOptions = z.infer<typeof querySchema>;
+
+// Database table name
+export const DOCUMENTS_TABLE = 'documents';

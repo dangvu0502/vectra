@@ -1,12 +1,13 @@
 import { ChatController } from './chat.controller';
 import { ChatServiceImpl } from './chat.service';
-import { DocumentAdapter } from '../adapters/documentAdapter'; // Import the adapters
-import { EmbeddingAdapter } from '../adapters/embeddingAdapter';
+import { myAgent } from '../mastra/agent'; // Import the configured Mastra agent
 
-const documentAdapter = new DocumentAdapter();
-const embeddingAdapter = new EmbeddingAdapter(documentAdapter);
-const chatService = ChatServiceImpl.getInstance(embeddingAdapter);
+// Instantiate the ChatService with the Mastra agent
+// Note: ChatServiceImpl doesn't seem to have a getInstance method based on its definition.
+// Assuming direct instantiation is intended. If getInstance is needed, the class needs modification.
+const chatService = new ChatServiceImpl(myAgent); 
 
+// Instantiate the ChatController with the ChatService
 export const chatController = ChatController.getInstance(chatService);
 
 export * from './chat.service';

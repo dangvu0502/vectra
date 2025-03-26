@@ -1,8 +1,13 @@
 import { Router } from 'express';
-import { chatController } from './index';
+import { chatController } from '@/modules/chat'; // Import the singleton instance
 
 const router = Router();
 
-router.post('/', (req, res) => chatController.chat(req, res));
+// Map route directly to the controller method
+router.post('/', (req, res) => {
+    return chatController.chat(req, res);
+});
 
-export { router as chatRoutes };
+// Removed GET /history as the method doesn't exist in the controller
+
+export { router as chatRoutes }; // Export the router directly
