@@ -9,7 +9,7 @@ import { VectorStoreDetailsPanel } from '@/components/storage/vector-store-detai
 
 export const StoragePage: FC = () => {
   const [activeTab, setActiveTab] = useState<'files' | 'vectorStores'>('files');
-  const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<string | null | undefined>(null);
   const [selectedVectorStore, setSelectedVectorStore] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
@@ -52,16 +52,17 @@ export const StoragePage: FC = () => {
     name: doc.filename,
     size: doc.size ? `${Math.round(doc.size / 1024)} KB` : '65 KB',
     date: new Date(doc.createdAt).toLocaleString(),
-    type: doc.filename.split('.').pop() || ''
+    type: doc.filename.split('.').pop() || '',
+    id: doc.id,
   }));
 
-  const fileDetails = Object.fromEntries(
+ const fileDetails = Object.fromEntries(
     documents.map(doc => [
-      doc.filename,
+      doc.id, // Use doc.id as the key
       {
         name: doc.filename,
         id: doc.id,
-        size: '65 KB',
+        size: doc.size ? `${Math.round(doc.size / 1024)} KB` : '65 KB', // Use dynamic size
         createdAt: new Date(doc.createdAt).toLocaleString(),
         status: 'ready' as 'ready' | 'processing' | 'error',
         vectorStores: [] // This will be populated with actual vector store data
@@ -141,9 +142,9 @@ export const StoragePage: FC = () => {
                 </div>
               ) : (
                 <FileList 
-                  files={files} 
+                  files={files}
                   selectedFile={selectedFile || ''}
-                  onFileSelect={(file) => setSelectedFile(file.name)}
+                  onFileSelect={(file) => setSelectedFile(file.id)}
                   className="min-h-[300px]"
                 />
               )
@@ -158,13 +159,13 @@ export const StoragePage: FC = () => {
           </div>
           
           {activeTab === 'files' ? (
-            selectedFileDetails && (
+            selectedFile ? (
               <FileDetailsPanel
-                file={selectedFileDetails}
+                file={fileDetails[selectedFile] || null}
                 onDelete={handleDelete}
                 isDeleting={deleteMutation.isPending}
               />
-            )
+            ) : null
           ) : (
             <VectorStoreDetailsPanel
               vectorStore={selectedVectorStore ? {

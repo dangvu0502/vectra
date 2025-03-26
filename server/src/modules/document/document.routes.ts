@@ -1,5 +1,5 @@
 import { documentController } from '@/modules/document';
-import { DEFAULT_CONFIG } from '@/modules/document/config';
+import { DEFAULT_CONFIG } from '@/modules/core/config';
 import { Router } from 'express';
 import multer from 'multer';
 

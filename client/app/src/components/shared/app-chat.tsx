@@ -3,6 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Loader2, Send, Database, FileText, Sparkles } from 'lucide-react';
 import { Tooltip } from '@/components/ui/tooltip';
+import { chat } from '@/api/services/chat';
 
 interface Message {
   text: string;
@@ -37,9 +38,9 @@ export function AppChat({ knowledgeSource }: AppChatProps) {
         sender: 'ai'
       });
     } else {
-      welcomeMessages.push({ 
-        text: 'Ask me anything about Claude.', 
-        sender: 'ai' 
+      welcomeMessages.push({
+        text: 'Ask me anything about Claude.',
+        sender: 'ai'
       });
     }
 
@@ -62,24 +63,23 @@ export function AppChat({ knowledgeSource }: AppChatProps) {
     setInputValue('');
     setIsLoading(true);
 
-    // Simulate an API call and AI response
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    try {
+      const docId = knowledgeSource?.type === 'file' ? knowledgeSource.id! : undefined;
+      const response = await chat(inputValue, docId);
 
-    let aiResponse: Message;
-    
-    if (knowledgeSource?.name) {
-      aiResponse = {
-        text: `This is a simulated AI response using knowledge from "${knowledgeSource.name}".`,
+      const aiResponse: Message = {
+        text: response,
         sender: 'ai',
       };
-    } else {
-      aiResponse = {
-        text: 'This is a simulated AI response.',
+
+      setMessages((prevMessages) => [...prevMessages, aiResponse]);
+    } catch (error) {
+      const errorResponse: Message = {
+        text: 'Sorry, there was an error processing your request.',
         sender: 'ai',
       };
+      setMessages((prevMessages) => [...prevMessages, errorResponse]);
     }
-
-    setMessages((prevMessages) => [...prevMessages, aiResponse]);
     setIsLoading(false);
   };
 
@@ -106,7 +106,7 @@ export function AppChat({ knowledgeSource }: AppChatProps) {
           <div className="mt-4">
             <h2 className="text-lg font-semibold">Example Questions</h2>
             <div className="mt-2 space-y-2">
-              <button 
+              <button
                 className="px-4 py-2 rounded-lg bg-muted dark:bg-zinc-800 text-muted-foreground dark:text-zinc-200 w-fit hover:bg-accent dark:hover:bg-zinc-700 transition-colors block text-left"
                 onClick={() => {
                   setInputValue("How do I create structured JSON output?");
@@ -115,7 +115,7 @@ export function AppChat({ knowledgeSource }: AppChatProps) {
               >
                 How do I create structured JSON output?
               </button>
-              <button 
+              <button
                 className="px-4 py-2 rounded-lg bg-muted dark:bg-zinc-800 text-muted-foreground dark:text-zinc-200 w-fit hover:bg-accent dark:hover:bg-zinc-700 transition-colors block text-left"
                 onClick={() => {
                   setInputValue("For few shot prompting, how do I pick examples?");
@@ -124,7 +124,7 @@ export function AppChat({ knowledgeSource }: AppChatProps) {
               >
                 For few shot prompting, how do I pick examples?
               </button>
-              <button 
+              <button
                 className="px-4 py-2 rounded-lg bg-muted dark:bg-zinc-800 text-muted-foreground dark:text-zinc-200 w-fit hover:bg-accent dark:hover:bg-zinc-700 transition-colors block text-left"
                 onClick={() => {
                   setInputValue("How can I prompt Claude to reply a user's language?");

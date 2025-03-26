@@ -1,13 +1,10 @@
 import type { Request, Response } from 'express';
 import fs from 'fs/promises';
 import { z } from 'zod';
-import {
-    DocumentNotFoundError,
-    type Document,
-    type DocumentService,
-    documentSchema,
-    querySchema
-} from '@/modules/document';
+import { DocumentNotFoundError } from '@/modules/core/errors'; // Updated import
+import type { Document } from '@/modules/document/types';
+import type { DocumentService } from '@/modules/document/document.service';
+import { documentSchema, querySchema } from '@/modules/document/document.model';
 
 export class DocumentController {
     private static instance: DocumentController | null = null;
@@ -28,24 +25,16 @@ export class DocumentController {
         DocumentController.instance = null;
     }
 
-    /**
-     * Upload a document and generate embeddings
-     * The embedding generation happens automatically via middleware
-     */
     async upload(req: Request & { file?: Express.Multer.File }, res: Response) {
         try {
             if (!req.file) {
-                return void res.status(400).json({
-                    status: 'error',
-                    message: 'No file uploaded'
-                });
+                return void res.status(400).json({ message: 'No file uploaded' });
             }
 
             const content = await fs.readFile(req.file.path, 'utf-8');
             const doc = await this.documentService.upload(req.file, content);
-            const validatedDoc = documentSchema.parse(doc);
+            // const validatedDoc = documentSchema.parse(doc);
 
-            // Include information about embedding status in response
             const embeddingStatus = doc.metadata?.embeddingsCreated
                 ? { embeddingStatus: 'success', embeddingTimestamp: doc.metadata.embeddingsTimestamp }
                 : doc.metadata?.embeddingError
@@ -55,65 +44,40 @@ export class DocumentController {
             res.status(201).json({
                 status: 'success',
                 data: {
-                    ...validatedDoc,
+                    ...doc,
                     embedding: embeddingStatus
                 }
             });
         } catch (error) {
             if (error instanceof z.ZodError) {
-                return void res.status(400).json({
-                    status: 'error',
-                    message: 'Invalid document data',
-                    errors: error.errors
-                });
+                return void res.status(400).json({ message: 'Invalid document data', errors: error.errors });
             }
-
-            res.status(500).json({
-                status: 'error',
-                message: error instanceof Error ? error.message : 'Upload failed'
-            });
+            if (error instanceof Error) {
+                return void res.status(500).json({ message: error.message });
+            }
+            res.status(500).json({ message: 'Upload failed' });
         }
     }
 
     async query(req: Request, res: Response) {
         try {
-            const validated = querySchema.parse({
-                q: req.query.q,
-                page: req.query.page ? parseInt(req.query.page as string, 10) : 1,
-                limit: req.query.limit ? parseInt(req.query.limit as string, 10) : 10,
-                sortBy: req.query.sortBy || 'createdAt',
-                sortOrder: req.query.sortOrder || 'desc'
-            });
-
-            const result = await this.documentService.query({
-                q: validated.q,
-                page: validated.page,
-                limit: validated.limit,
-                sortBy: validated.sortBy as keyof Document,
-                sortOrder: validated.sortOrder
-            });
-
+            console.log('Query params:', req.query);
+            const validated = querySchema.parse(req.query);
+            const result = await this.documentService.query(validated);
             const validatedDocs = z.array(documentSchema).parse(result.documents);
+            console.log('Validated docs:', validatedDocs.length);
             res.json({
                 status: 'success',
-                data: {
-                    documents: validatedDocs,
-                    total: result.total
-                }
+                data: { documents: validatedDocs, total: result.total }
             });
         } catch (error) {
             if (error instanceof z.ZodError) {
-                return void res.status(400).json({
-                    status: 'error',
-                    message: 'Invalid query parameters',
-                    errors: error.errors
-                });
+                return void res.status(400).json({ message: 'Invalid query parameters', errors: error.errors });
             }
-
-            res.status(500).json({
-                status: 'error',
-                message: error instanceof Error ? error.message : 'Query failed'
-            });
+            if (error instanceof Error) {
+                return void res.status(500).json({ message: error.message });
+            }
+            res.status(500).json({ message: 'Query failed' });
         }
     }
 
@@ -121,27 +85,18 @@ export class DocumentController {
         try {
             const doc = await this.documentService.findById(req.params.id);
             if (!doc) {
-                return void res.status(404).json({
-                    status: 'error',
-                    message: `Document with id "${req.params.id}" not found`
-                });
+                return void res.status(404).json({ message: `Document with id "${req.params.id}" not found` });
             }
-
             const validatedDoc = documentSchema.parse(doc);
-            res.json({ status: 'success', data: validatedDoc });
+            res.json({ data: validatedDoc });
         } catch (error) {
             if (error instanceof z.ZodError) {
-                return void res.status(400).json({
-                    status: 'error',
-                    message: 'Invalid document ID',
-                    errors: error.errors
-                });
+                return void res.status(400).json({ message: 'Invalid document ID', errors: error.errors });
             }
-
-            res.status(500).json({
-                status: 'error',
-                message: error instanceof Error ? error.message : 'Find failed'
-            });
+            if (error instanceof Error) {
+                return void res.status(500).json({ message: error.message });
+            }
+            res.status(500).json({ message: 'Find failed' });
         }
     }
 
@@ -152,24 +107,15 @@ export class DocumentController {
             res.status(204).send();
         } catch (error) {
             if (error instanceof z.ZodError) {
-                return void res.status(400).json({
-                    status: 'error',
-                    message: 'Invalid document ID',
-                    errors: error.errors
-                });
+                return void res.status(400).json({ message: 'Invalid document ID', errors: error.errors });
             }
-
             if (error instanceof DocumentNotFoundError) {
-                return void res.status(404).json({
-                    status: 'error',
-                    message: error.message
-                });
+                return void res.status(404).json({ message: error.message });
             }
-
-            res.status(500).json({
-                status: 'error',
-                message: error instanceof Error ? error.message : 'Delete failed'
-            });
+            if (error instanceof Error) {
+                return void res.status(500).json({ message: error.message });
+            }
+            res.status(500).json({ message: 'Delete failed' });
         }
     }
 }

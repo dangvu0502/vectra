@@ -9,14 +9,14 @@ export interface Document {
 
 export interface QueryOptions {
   q?: string;
-  page?: number;
-  limit?: number;
+  page?: string;
+  limit?: string;
   sortBy?: keyof Document;
   sortOrder?: 'asc' | 'desc';
 }
 
-export interface QueryResult {
-  documents: Document[];
+export interface QueryResult<T = Document> {
+  documents: T[];
   total: number;
 }
 

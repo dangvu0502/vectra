@@ -2,7 +2,9 @@ import express from 'express';
 import morgan from 'morgan';
 import cors from 'cors';
 import session from 'express-session';
-import { documentRoutes } from '@/modules/document';
+import { initializeDatabase } from './database/connection'; // Import the initializer
+import { chatRoutes } from './modules/chat';
+import { documentRoutes } from './modules/document'; // Updated import paths
 import { passport } from './modules/auth';
 import type { UserProfile } from './modules/auth';
 
@@ -13,6 +15,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
+app.use(express.json());
 
 // Session middleware
 app.use(
@@ -28,8 +31,9 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Routes
+// Routes using controllers
 app.use('/api/v1/documents', documentRoutes);
+app.use('/api/v1/chat', chatRoutes);
 
 // Google authentication routes
 app.get(
@@ -57,9 +61,14 @@ app.get('/profile', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log('🚀 Server Status:');
-  console.log(`- Running on port: ${PORT}`);
+
+// Initialize DB before starting the server
+initializeDatabase().then(() => {
+  app.listen(PORT, () => {
+    console.log('🚀 Server Status:');
+    console.log(`- Running on port: ${PORT}`);
   console.log(`- Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`- Document API: http://localhost:${PORT}/api/v1/documents`);
+  console.log(`- Chat API: http://localhost:${PORT}/api/v1/chat`);
 });
+}); // Add missing closing parenthesis and brace for .then()
