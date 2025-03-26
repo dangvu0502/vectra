@@ -6,7 +6,7 @@ import { Link, useLocation } from "react-router-dom";
 import { SidebarItem } from "./sidebar-item";
 import { Switch } from "./switch";
 import { UserAvatar } from "./user-avatar";
-import { AuthModal } from "@/components/shared/auth-modal";
+import { AuthModal } from "@/components/features/auth-modal";
 
 interface SidebarProps {
   className?: string;

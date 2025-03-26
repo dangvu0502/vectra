@@ -56,13 +56,6 @@ app.get('/profile', (req, res) => {
   }
 });
 
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
-});
-
-// Mount routes
-app.use('/api/v1/documents', documentRoutes);
-
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log('🚀 Server Status:');
