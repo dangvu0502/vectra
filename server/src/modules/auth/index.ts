@@ -1,6 +1,7 @@
 import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
-import { db } from '../../db';
+import { v4 as uuidv4 } from 'uuid';
+import { db } from '@/database/connection';
 
 // Define a custom user interface
 export interface UserProfile {
@@ -34,11 +35,12 @@ passport.use(
         // Create a new user
         const newUser = await db('users')
           .insert({
+            id: uuidv4(), 
             provider: 'google',
             provider_id: profile.id,
-            email: profile.emails ? profile.emails[0].value : null, // Ensure email is handled
+            email: profile.emails ? profile.emails[0].value : null, 
             display_name: profile.displayName,
-            profile_picture_url: profile.photos ? profile.photos[0].value : null, // Ensure photo is handled
+            profile_picture_url: profile.photos ? profile.photos[0].value : null, 
           })
           .returning('*');
           
