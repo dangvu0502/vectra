@@ -1,28 +1,36 @@
 import express from 'express';
 import morgan from 'morgan';
-import { initializeDatabase } from './database/connection'; // Import the initializer
-import { chatRoutes } from './modules/chat';
-import { documentRoutes } from './modules/document'; // Updated import paths
+import cors from 'cors';
+import session from 'express-session';
+import { initializeDatabase } from './database/connection'; 
+import { passport } from './modules/auth'; 
+import { routes } from './routes'; 
+import { env } from './config/environment';
 
 const app = express();
 
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
 app.use(express.json());
 
-// Error handling middleware
-app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error('Error:', err);
-  res.status(500).json({
-    status: 'error',
-    message: process.env.NODE_ENV === 'production'
-      ? 'Internal server error'
-      : err.message
-  });
-});
+// Session middleware
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || 'your_session_secret', // Use environment variable
+    resave: false,
+    saveUninitialized: true,
+    cookie: { secure: process.env.NODE_ENV === 'production' }, // Use secure cookies in production
+  })
+);
 
-// Mount routes using controllers
-app.use('/api/v1/documents', documentRoutes);
-app.use('/api/v1/chat', chatRoutes);
+// Passport middleware
+app.use(passport.initialize());
+app.use(passport.session());
+
+// Mount the aggregated routes
+app.use('/api/', routes);
 
 const PORT = process.env.PORT || 3000;
 
