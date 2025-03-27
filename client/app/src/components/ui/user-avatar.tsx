@@ -1,8 +1,10 @@
 import { FC } from "react";
 import { cn } from "@/utils";
-import { User } from "lucide-react";
+import { User as UserIcon } from "lucide-react";
+import { User } from "@/hooks/use-auth";
 
 export interface UserAvatarProps {
+  user?: User | null;
   size?: "sm" | "md" | "lg";
   className?: string;
 }
@@ -19,16 +21,34 @@ const iconSizeMap = {
   lg: 24,
 };
 
-export const UserAvatar: FC<UserAvatarProps> = ({ size = "sm", className }) => {
+export const UserAvatar: FC<UserAvatarProps> = ({
+  user,
+  size = "sm",
+  className,
+}) => {
+  const hasAvatar = !!user?.profilePictureUrl;
+  console.log("🚀 ~ hasAvatar:", hasAvatar);
+  console.log("🚀 ~ user:", user);
+
   return (
     <div
       className={cn(
-        "rounded-full bg-sidebar-accent flex items-center justify-center transition-transform duration-200 ease-in-out",
+        "rounded-full flex items-center justify-center overflow-hidden transition-transform duration-200 ease-in-out",
+        "bg-sidebar-accent text-sidebar-foreground", // Default background/text
         sizeMap[size],
         className
       )}
+      aria-label={user?.displayName || "User Avatar"}
     >
-      <User size={iconSizeMap[size]} className="text-sidebar-foreground" />
+      {hasAvatar ? (
+        <img
+          src={user.profilePictureUrl}
+          alt={user.displayName || "User Avatar"}
+          className="w-full h-full object-cover"
+        />
+      ) : (
+        <UserIcon size={iconSizeMap[size]} />
+      )}
     </div>
   );
 };

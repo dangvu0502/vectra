@@ -40,6 +40,7 @@ router.get(
   // A dedicated failure route could also be added if needed.
 );
 
+router.get('/me', getProfile);
 // --- Logout Route (Optional but Recommended) ---
 router.post('/logout', (req, res, next) => {
   req.logout((err) => {
