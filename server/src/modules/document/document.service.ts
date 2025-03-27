@@ -79,22 +79,22 @@ export class DocumentServiceImpl implements DocumentService {
         // Use a non-blocking call, but handle potential promise rejection
         this.embeddingService.processDocument(documentForEmbedding).then(() => {
             console.log(`Embedding process initiated for document ${docId}`);
-            // Optionally update document metadata in DB to mark embedding started/completed
+            // Optionally update document metadata in DB to mark embedding started/completed using jsonb_set
             return this.db(DOCUMENTS_TABLE)
                 .where({ id: docId })
-                .update({ 
-                    'metadata.embeddingsCreated': true, 
-                    'metadata.embeddingsTimestamp': new Date(),
-                    updated_at: new Date() 
+                .update({
+                    metadata: this.db.raw('jsonb_set(jsonb_set(metadata, \'{embeddingsCreated}\', \'true\'), \'{embeddingsTimestamp}\', ?::jsonb)', [JSON.stringify(new Date().toISOString())]),
+                    updated_at: new Date()
                 });
         }).catch(embeddingError => { // Catch errors from the async embedding process
             console.error(`Embedding failed for document ${docId}:`, embeddingError);
-            // Optionally update document metadata in DB to mark embedding error
+            // Optionally update document metadata in DB to mark embedding error using jsonb_set
+            const errorMsg = embeddingError instanceof Error ? embeddingError.message : 'Unknown embedding error';
             return this.db(DOCUMENTS_TABLE)
                 .where({ id: docId })
-                .update({ 
-                    'metadata.embeddingError': embeddingError instanceof Error ? embeddingError.message : 'Unknown embedding error',
-                    updated_at: new Date() 
+                .update({
+                    metadata: this.db.raw('jsonb_set(metadata, \'{embeddingError}\', ?::jsonb)', [JSON.stringify(errorMsg)]),
+                    updated_at: new Date()
                 });
         });
 

@@ -14,8 +14,8 @@ if (!env.DATABASE_URL) {
 export const graphRagTool = createGraphRAGTool({
   // Assuming 'pgvector' is how you'll refer to your configured PgVector instance in Mastra setup
   vectorStoreName: "pgvector", 
-  // Assuming 'documents' is the name of your table/index used for vector storage
-  indexName: "documents", 
+  // Update indexName to the actual table name
+  indexName: "mastra_vectors", 
   model: embeddingModel, // Use centralized embedding model
   // Optional: Adjust graphOptions if needed
   // graphOptions: {
@@ -24,5 +24,5 @@ export const graphRagTool = createGraphRAGTool({
   //   randomWalkSteps: 100,
   //   restartProb: 0.15
   // },
-  description: "Access and analyze relationships between information in the knowledge base to answer complex questions about connections, patterns, or comparisons between documents.",
+  description: "Access and analyze relationships between information in the knowledge base using Graph RAG. When discussing a specific document, use the 'filter' parameter with the 'doc_id' metadata field (e.g., filter: { doc_id: '...' }) to focus the analysis on that document.",
 });

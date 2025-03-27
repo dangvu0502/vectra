@@ -1,5 +1,6 @@
 import { Agent } from "@mastra/core/agent"; // Import correct Agent type
-import type { AgentTools } from "../mastra/agent"; // Use type-only import for AgentTools
+// Import the original AgentTools type from the agent definition
+import type { AgentTools } from "../mastra/agent"; 
 import type { CoreMessage } from "ai"; // Use type-only import for CoreMessage
 
 // Define a placeholder user ID generation/retrieval function
@@ -13,7 +14,7 @@ export interface ChatService {
 }
 
 export class ChatServiceImpl implements ChatService {
-  // Inject the specific Mastra Agent 
+  // Inject the specific Mastra Agent using the original AgentTools type
  private readonly mastraAgent: Agent<AgentTools>;
   // Constructor now takes the injected agent instance
   constructor(mastraAgent: Agent<AgentTools>) {
@@ -27,24 +28,30 @@ export class ChatServiceImpl implements ChatService {
       const resourceId = userId; // Use userId as resourceId
 
       // Prepare messages for the agent
-      const messages: CoreMessage[] = [{ role: "user", content: message }];
-      
-      // Add context about the specific document if docId is present
-      // The agent instructions already guide it to use filters based on context,
-      // but explicitly mentioning it in the prompt can help reinforce focus.
+      const messages: CoreMessage[] = []; // Initialize empty
+
+      // Add system message for context if docId is present
       if (docId) {
-        messages.unshift({ 
-          role: "system", 
-          content: `Context: We are discussing the document with ID: ${docId}. Focus your knowledge base queries using this ID.` 
+        messages.push({
+          role: "system",
+          content: `Context: We are discussing the document with ID: ${docId}. Focus your knowledge base queries using this ID.`
         });
       }
+      // Add user message
+      messages.push({ role: "user", content: message });
+
 
       console.log(`Calling Mastra agent for user: ${resourceId}, thread: ${threadId}`);
       
-      // Call the agent's generate method with messages and options
+      // Call the agent's generate method with messages and standard options
+      // The docId context is provided via the system message added earlier
       const result = await this.mastraAgent.generate(messages, {
         resourceId,
         threadId,
+        context:[{
+          "role": "user",
+          "content": `this is the docId we are talking about ${docId}`
+        }]
         // Add other options if needed, e.g., temperature
       });
 

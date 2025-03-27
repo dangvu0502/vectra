@@ -1,4 +1,5 @@
 import { createVectorQueryTool } from "@mastra/rag";
+// import { z } from "zod"; // Removed zod import
 import { embeddingModel } from "../config"; // Import centralized embedding model
 import { env } from "../../../config/environment"; // Assuming environment config is here
 
@@ -15,15 +16,17 @@ if (!env.DATABASE_URL) { // Check for DB URL as it's needed for vector store nam
  */
 export const documentQueryTool = createVectorQueryTool({
   // Assuming 'pgvector' is how you'll refer to your configured PgVector instance in Mastra setup
-  vectorStoreName: "pgvector",
-  // Assuming 'documents' is the name of your table/index used for vector storage
-  indexName: "documents",
+  vectorStoreName: "pgvector", // This likely refers to the configured PgVector instance name
+  // Update indexName to the actual table name
+  indexName: "mastra_vectors",
   model: embeddingModel, // Use centralized embedding model
-  enableFilter: true, // Correct property name for enabling metadata filtering
+  enableFilter: true, // Keep filtering enable
+
+  // inputSchema removed - filtering is handled via arguments during tool call
   // Optional: Add reranking for better results if needed
   // reranker: {
   //   model: languageModel, // Use centralized language model if reranking
   //   options: { topK: 5 }
   // },
-  description: "Access the knowledge base to find information from stored documents to answer user questions.",
+  description: "Access the knowledge base to find information from stored documents using vector search. To search within a specific document, provide a 'filter' object in the arguments, like { filter: { doc_id: '...' } }.",
 });

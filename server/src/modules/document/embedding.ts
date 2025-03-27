@@ -9,7 +9,7 @@ import { embeddingModel, pgVector } from '../mastra/config'; // Import centraliz
 // Default chunking options (can be overridden if needed)
 const DEFAULT_CHUNK_SIZE = 1000;
 const DEFAULT_OVERLAP_SIZE = 200;
-const VECTOR_INDEX_NAME = 'documents'; // Assumed index name used in Mastra config
+const VECTOR_INDEX_NAME = 'mastra_vectors'; // Set to the newly created table name
 
 // Interface defining the service's responsibilities
 export interface EmbeddingService {
@@ -92,10 +92,11 @@ export class EmbeddingServiceImpl implements EmbeddingService {
         throw new Error(`Mismatch between chunks (${chunks.length}) and embeddings (${embeddings?.length || 0}) count.`);
       }
 
-      // Prepare data for PgVector upsert, separating vectors, ids, and metadata
-      const vectorIds = chunks.map((_, i) => `${document.id}_chunk_${i}`);
+      // Prepare data for PgVector upsert
+      const vectorIds = chunks.map((_, i) => `${document.id}_chunk_${i}`); // Generate IDs matching 'vector_id' column
       const vectorEmbeddings = embeddings; // Raw number[][]
       const vectorMetadata = chunks.map((chunk, i) => ({
+          // id: chunkId, // Removed ID from metadata
           ...chunk.metadata, // Includes doc_id, filename etc. from MDocument creation
           chunk_index: i,
           chunk_text: chunk.text, // Store chunk text in metadata for retrieval
@@ -103,12 +104,12 @@ export class EmbeddingServiceImpl implements EmbeddingService {
 
 
       console.log(`Upserting ${vectorEmbeddings.length} vectors into index '${VECTOR_INDEX_NAME}' for document ${document.id}`);
-      // Upsert into PgVector - Pass vectors, ids, and metadata arrays if supported
-      await this.vectorStore.upsert({ 
-          indexName: VECTOR_INDEX_NAME, 
-          vectors: vectorEmbeddings, 
-          ids: vectorIds, // Pass IDs if supported
-          metadata: vectorMetadata // Pass metadata if supported
+      // Upsert into PgVector - Pass vectors, ids, and metadata arrays. Specify the correct index name.
+      await this.vectorStore.upsert({
+          indexName: VECTOR_INDEX_NAME,
+          vectors: vectorEmbeddings,
+          ids: vectorIds, // Pass IDs using the 'ids' parameter, matching the 'vector_id' column
+          metadata: vectorMetadata // Pass metadata without the 'id' field
       });
       console.log(`Successfully processed and embedded document ${document.id}`);
 
@@ -124,7 +125,8 @@ export class EmbeddingServiceImpl implements EmbeddingService {
 
   async deleteDocumentEmbeddings(docId: string): Promise<void> {
     try {
-      console.log(`Attempting to delete embeddings for document ${docId} from index '${VECTOR_INDEX_NAME}'`);
+      // Use the correct index name here as well
+      console.log(`Attempting to delete embeddings for document ${docId} from index '${VECTOR_INDEX_NAME}'`); 
       
       // TODO: Verify the correct method and signature for deleting vectors by metadata filter in @mastra/pg PgVector.
       // The following attempts ('delete', 'deleteVectors' with filter object) failed.
