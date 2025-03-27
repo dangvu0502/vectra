@@ -2,11 +2,10 @@ import express from 'express';
 import morgan from 'morgan';
 import cors from 'cors';
 import session from 'express-session';
-import { initializeDatabase } from './database/connection'; // Import the initializer
-import { chatRoutes } from './modules/chat';
-import { documentRoutes } from './modules/document'; // Updated import paths
-import { passport } from './modules/auth';
-import type { UserProfile } from './modules/auth';
+import { initializeDatabase } from './database/connection'; 
+import { passport } from './modules/auth'; 
+import { routes } from './routes'; 
+import { env } from './config/environment';
 
 const app = express();
 
@@ -30,34 +29,8 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Routes using controllers
-app.use('/api/v1/documents', documentRoutes);
-app.use('/api/v1/chat', chatRoutes);
-
-// Google authentication routes
-app.get(
-  '/api/auth/google',
-  passport.authenticate('google', { scope: ['profile', 'email'] })
-);
-
-app.get(
-  '/api/auth/google/callback',
-  passport.authenticate('google', { failureRedirect: '/' }), // Redirect to home on failure
-  (req, res) => {
-    // Successful authentication, redirect or send response
-    res.redirect('/profile'); // Or send a success response: res.send('Logged in!');
-  }
-);
-
-// Example protected route
-app.get('/profile', (req, res) => {
-  if (req.isAuthenticated()) {
-    const user = req.user as UserProfile;
-    res.send(`Welcome, ${user.display_name}!`);
-  } else {
-    res.status(401).send('Unauthorized');
-  }
-});
+// Mount the aggregated routes
+app.use('/api/', routes);
 
 const PORT = process.env.PORT || 3000;
 
