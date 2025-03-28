@@ -31,7 +31,12 @@ export const loggedDocumentQueryTool = createTool({
         throw new Error(`Original tool ${documentQueryTool.id} does not have an executable function.`);
     }
     // We need to pass the full params object as the original execute expects it
-    return documentQueryTool.execute(params);
+    const result = await documentQueryTool.execute(params);
+
+    if (logger) {
+      logger.info(`[Tool Call] Finished ${documentQueryTool.id}`, { toolId: documentQueryTool.id, threadId, resourceId, context, result });
+    }
+    return result;
   },
 });
 
@@ -62,6 +67,12 @@ export const loggedGraphRagTool = createTool({
         if (typeof graphRagTool.execute !== 'function') {
             throw new Error(`Original tool ${graphRagTool.id} does not have an executable function.`);
         }
-        return graphRagTool.execute(params);
+
+        const result = await graphRagTool.execute(params);
+        if (logger) {
+            logger.info(`[Tool Call] Finished ${graphRagTool.id}`, { toolId: graphRagTool.id, threadId, resourceId, context, result });
+        }
+
+        return result;
     },
 });

@@ -103,15 +103,32 @@ export class EmbeddingServiceImpl implements EmbeddingService {
       }));
 
 
-      console.log(`Upserting ${vectorEmbeddings.length} vectors into index '${VECTOR_INDEX_NAME}' for document ${document.id}`);
-      // Upsert into PgVector - Pass vectors, ids, and metadata arrays. Specify the correct index name.
-      await this.vectorStore.upsert({
+      const upsertPayload = {
           indexName: VECTOR_INDEX_NAME,
           vectors: vectorEmbeddings,
-          ids: vectorIds, // Pass IDs using the 'ids' parameter, matching the 'vector_id' column
-          metadata: vectorMetadata // Pass metadata without the 'id' field
-      });
-      console.log(`Successfully processed and embedded document ${document.id}`);
+          ids: vectorIds,
+          metadata: vectorMetadata
+      };
+      
+      console.log(`Upserting ${vectorEmbeddings.length} vectors into index '${VECTOR_INDEX_NAME}' for document ${document.id}`);
+      // Log the payload structure (omitting potentially large vectors for brevity)
+      console.log(`Upsert Payload (excluding vectors):`, JSON.stringify({ ...upsertPayload, vectors: `[${vectorEmbeddings.length} vectors]` }, null, 2));
+
+      try {
+        // Upsert into PgVector - Pass vectors, ids, and metadata arrays. Specify the correct index name.
+        const upsertResult = await this.vectorStore.upsert(upsertPayload);
+        
+        // Log the result from the upsert operation, if any
+        console.log(`Upsert operation result for document ${document.id}:`, upsertResult); 
+        
+        // Only log success if no error was thrown and potentially if result indicates success
+        console.log(`Successfully processed and embedded document ${document.id}`);
+      } catch (upsertError) {
+         // Catch specific errors from the upsert call
+         console.error(`Error during vectorStore.upsert for document ${document.id}:`, upsertError);
+         // Re-throw to ensure the overall process fails
+         throw upsertError; 
+      }
 
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
