@@ -1,18 +1,34 @@
+import { env } from "@/config/environment";
+import { createLoggedTool, documentQueryTool, embeddingModel, graphRagTool } from "@/modules/mastra/tools";
+import { openai } from "@ai-sdk/openai";
 import { Agent } from "@mastra/core/agent";
-// Import only the LOGGED wrapper tools
-import { loggedDocumentQueryTool, loggedGraphRagTool } from "../tools/logged-rag-tools"; 
-// Removed thinkTool import
-import { memory, languageModel } from "../config"; 
+import { Memory } from "@mastra/memory";
+import { PgVector, PostgresStore } from "@mastra/pg";
 
-// Define and export the type for the LOGGED tools used by this agent (excluding thinkTool)
-export type AgentTools = {
-  documentQueryTool: typeof loggedDocumentQueryTool; // Use logged tool type
-  graphRagTool: typeof loggedGraphRagTool; // Use logged tool type
-  // Removed thinkTool type
-};
+const pgVector = new PgVector(env.DATABASE_URL); // Export pgVector
 
-// Agent uses the updated tools type
-export const myAgent = new Agent<AgentTools>({
+const postgresStore = new PostgresStore({ connectionString: env.DATABASE_URL });
+
+const languageModel = openai('gpt-4o-mini');
+
+const memory = new Memory({
+  storage: postgresStore,
+  vector: pgVector,
+  embedder: embeddingModel,
+  options: {
+    semanticRecall: {
+      topK: 5,
+      messageRange: 2,
+    },
+    workingMemory: {
+      enabled: true,
+    },
+    lastMessages: 10,
+  },
+});
+
+
+const myAgent = new Agent({
   name: "EmbeddyChatAgent",
   instructions: `You are a helpful assistant. Follow these guidelines:
 1. Information Retrieval & Context Utilization:
@@ -26,9 +42,18 @@ export const myAgent = new Agent<AgentTools>({
   model: languageModel, // Use centralized language model
   memory: memory, // Add the configured memory
   // Register only the LOGGED wrapper tools
-  tools: { 
-    documentQueryTool: loggedDocumentQueryTool, // Use logged tool instance
-    graphRagTool: loggedGraphRagTool, // Use logged tool instance
-    // Removed thinkTool 
-  }, 
+  tools: {
+    documentQueryTool: createLoggedTool({
+      originalTool: documentQueryTool,
+    }), // Use logged tool instance
+    graphRagTool: createLoggedTool({
+      originalTool: graphRagTool,
+    })
+  },
 });
+
+export {
+  languageModel,
+  myAgent, pgVector,
+  postgresStore
+};
