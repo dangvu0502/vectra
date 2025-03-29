@@ -2,7 +2,8 @@ import { MDocument } from '@mastra/rag';
 import { embedMany } from 'ai';
 // Use typeof to get the specific type of the imported embeddingModel instance
 import { embeddingModel, mastra } from '@/modules/mastra'; // Using path alias again & Import centralized instances
-import type { Document } from './types';
+// Remove import from ./types
+import type { Document as DbDocumentType } from './document.model'; // Import the Zod-derived type
 import type { PgVector } from '@mastra/pg';
 
 // Default chunking options (can be overridden if needed)
@@ -12,13 +13,14 @@ const VECTOR_INDEX_NAME = 'mastra_vectors'; // Set to the newly created table na
 
 // Interface defining the service's responsibilities
 export interface IEmbeddingService {
-  processDocument(document: Document): Promise<void>;
+  processDocument(document: DbDocumentType): Promise<void>; // Use DbDocumentType from model
   deleteDocumentEmbeddings(docId: string): Promise<void>;
-} // Added missing closing brace
+} // Corrected closing brace if it was missing
 
 // Implementation using centralized Mastra components
+// Implementation using centralized Mastra components
 export class EmbeddingService implements IEmbeddingService {
-  private static instance: EmbeddingService | null = null; // Added back static instance
+  private static instance: EmbeddingService | null = null; // Keep static instance
 
   // Use injected/imported centralized instances
   private readonly _embeddingModel: typeof embeddingModel; // Use specific type
@@ -26,7 +28,7 @@ export class EmbeddingService implements IEmbeddingService {
   private readonly options: { chunkSize: number; overlapSize: number };
 
   // Constructor now takes centralized instances with specific types
-  private constructor( // Made constructor private again
+  private constructor( // Keep constructor private
     embeddingModelInstance: typeof embeddingModel,
     vectorStoreInstance: PgVector,
     options: { chunkSize?: number; overlapSize?: number } = {}
@@ -39,7 +41,7 @@ export class EmbeddingService implements IEmbeddingService {
     };
   }
 
-  // Added back static getInstance method
+  // Keep static getInstance method
   static getInstance(
     embeddingModelInstance: typeof embeddingModel,
     vectorStoreInstance: PgVector,
@@ -55,24 +57,25 @@ export class EmbeddingService implements IEmbeddingService {
     return EmbeddingService.instance;
   }
 
-  // Added back static resetInstance method (optional but common with singletons)
+  // Keep static resetInstance method (optional but common with singletons)
   static resetInstance(): void {
     EmbeddingService.instance = null;
   }
 
 
-  async processDocument(document: Document): Promise<void> {
+  async processDocument(document: DbDocumentType): Promise<void> { // Use DbDocumentType
     console.log(`Processing document for embedding: ${document.id} (${document.filename})`);
     try {
+      // Construct a flat metadata object for MDocument
+      const metadata = {
+        doc_id: document.id, // Crucial for filtering
+        filename: document.filename,
+        created_at: document.created_at.toISOString(), // Use created_at from DbDocumentType
+        ...(document.metadata || {}), // Spread existing metadata if it exists
+      };
+
       const doc = MDocument.fromText(document.content, {
-        // Pass document metadata that might be useful for filtering later
-        metadata: {
-          doc_id: document.id, // Crucial for filtering
-          filename: document.filename,
-          created_at: document.createdAt.toISOString(),
-          // Add any other relevant metadata from document.metadata if needed
-          ...(document.metadata || {})
-        },
+        ...metadata, // Pass the flat metadata object
         chunkSize: this.options.chunkSize,
         overlapSize: this.options.overlapSize,
       });
@@ -97,12 +100,10 @@ export class EmbeddingService implements IEmbeddingService {
       const vectorIds = chunks.map((_, i) => `${document.id}_chunk_${i}`); // Generate IDs matching 'vector_id' column
       const vectorEmbeddings = embeddings; // Raw number[][]
       const vectorMetadata = chunks.map((chunk, i) => ({
-        // id: chunkId, // Removed ID from metadata
-        ...chunk.metadata, // Includes doc_id, filename etc. from MDocument creation
-        chunk_index: i,
-        chunk_text: chunk.text, // Store chunk text in metadata for retrieval
+          ...(chunk.metadata || {}),
+          chunk_index: i,
+          chunk_text: chunk.text, // Store chunk text in metadata for retrieval
       }));
-
 
       const upsertPayload = {
         indexName: VECTOR_INDEX_NAME,
@@ -146,18 +147,17 @@ export class EmbeddingService implements IEmbeddingService {
       // Use the correct index name here as well
       console.log(`Attempting to delete embeddings for document ${docId} from index '${VECTOR_INDEX_NAME}'`);
 
-      // TODO: Verify the correct method and signature for deleting vectors by metadata filter in @mastra/pg PgVector.
-      // The following attempts ('delete', 'deleteVectors' with filter object) failed.
-      // It might require querying for IDs first and deleting by ID, or a different filter syntax/method.
-      // For now, vector deletion is commented out.
-      /* 
-      const deleteResult = await this.vectorStore.delete({ // Or deleteVectors, deleteByFilter?
-          indexName: VECTOR_INDEX_NAME, 
-          filter: { doc_id: docId } // Verify filter syntax if method exists
+      // Confirmed limitation: @mastra/pg PgVector might not support deletion by metadata filter directly.
+      // Deletion might require fetching vector IDs first based on the filter, then deleting by ID.
+      // This functionality is currently skipped pending clarification or updates in the library.
+      /*
+      const deleteResult = await this.vectorStore.delete({ // Method and filter syntax need verification
+          indexName: VECTOR_INDEX_NAME,
+          filter: { 'metadata.doc_id': docId } // Example filter, needs verification
       });
-      console.log(`Deletion result for document ${docId}:`, deleteResult); 
+      console.log(`Deletion result for document ${docId}:`, deleteResult);
       */
-      console.warn(`Vector deletion for document ${docId} is currently skipped. Verify @mastra/pg delete method.`);
+      console.warn(`Vector deletion by metadata filter for document ${docId} is currently skipped due to library limitations.`);
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -167,5 +167,5 @@ export class EmbeddingService implements IEmbeddingService {
   }
 }
 
-// Added back instance export, initialized using getInstance and imported dependencies
+// Keep instance export
 export const embeddingService = EmbeddingService.getInstance(embeddingModel, mastra.getVector("pgvector"));

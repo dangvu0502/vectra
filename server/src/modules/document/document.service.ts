@@ -3,12 +3,13 @@ import type { Knex } from 'knex';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { DocumentConfig } from '../core/config'; // Assuming this config is still relevant for uploads
-import type { Document as DbDocumentType, QueryOptions } from './document.model'; // Keep QueryOptions import
+// Keep QueryOptions import from model.ts, rename DbDocumentType for clarity if desired, or keep as is.
+import type { Document as DbDocumentType, QueryOptions } from './document.model';
 import { db } from '@/database/connection'; // Import db instance
 import { DocumentNotFoundError } from '@/modules/core/errors'; // Import error type
 import { DOCUMENTS_TABLE, documentSchema, querySchema } from './document.model';
 import { embeddingService, type IEmbeddingService } from './embedding.service'; // Import EmbeddingService interface AND INSTANCE
-import type { Document as EmbeddingDocumentType } from './types';
+// Remove import from ./types
 
 // Interface using DbDocumentType and QueryOptions from model.ts
 export interface IDocumentService {
@@ -18,17 +19,17 @@ export interface IDocumentService {
   delete(id: string): Promise<void>;
 }
 
-class DocumentService implements IDocumentService { // Removed export
-  private static instance: DocumentService | null = null; // Added back static instance
+class DocumentService implements IDocumentService { // Keep class definition
+  private static instance: DocumentService | null = null; // Keep static instance
   private readonly db: Knex;
   private readonly embeddingService: IEmbeddingService;
 
-  private constructor(db: Knex, embeddingService: IEmbeddingService) { // Made constructor private
+  private constructor(db: Knex, embeddingService: IEmbeddingService) { // Keep constructor private
     this.db = db;
     this.embeddingService = embeddingService;
   }
 
-  // Added back static getInstance method
+  // Keep static getInstance method
   static getInstance(db: Knex, embeddingService: IEmbeddingService): DocumentService {
     if (!DocumentService.instance) {
       DocumentService.instance = new DocumentService(db, embeddingService);
@@ -36,7 +37,7 @@ class DocumentService implements IDocumentService { // Removed export
     return DocumentService.instance;
   }
 
-  // Added back static resetInstance method (optional)
+  // Keep static resetInstance method (optional)
   static resetInstance(): void {
     DocumentService.instance = null;
   }
@@ -80,21 +81,16 @@ class DocumentService implements IDocumentService { // Removed export
       // Validate the inserted record right away
       createdDbDocument = documentSchema.parse(insertedRecord);
 
-      // Create the object matching EmbeddingDocument type from types.ts
-      const documentForEmbedding: EmbeddingDocumentType = {
-        id: createdDbDocument.id,
-        filename: createdDbDocument.filename,
-        path: createdDbDocument.path,
-        content: createdDbDocument.content, // Pass content
-        createdAt: createdDbDocument.created_at, // Map DB created_at to Embedding type createdAt
-        metadata: createdDbDocument.metadata // Pass original metadata
-      };
+      // Type assertion or mapping might not be strictly needed if DbDocumentType structure matches EmbeddingDocumentType
+      // Ensure the object passed matches the expected structure for processDocument
+      const documentForEmbedding: DbDocumentType = createdDbDocument; // Directly use the validated DB document if structure matches
 
       // Asynchronously process embeddings after successful DB insertion
-      // Use a non-blocking call, but handle potential promise rejection
+      // Use a non-blocking call, handle potential promise rejection for logging/status update
       this.embeddingService.processDocument(documentForEmbedding).then(() => {
-        console.log(`Embedding process initiated for document ${docId}`);
-        // Optionally update document metadata in DB to mark embedding started/completed using jsonb_set
+        console.log(`Embedding process initiated successfully for document ${docId}`);
+        // Update document metadata in DB to mark embedding started/completed using jsonb_set
+        // This update happens *after* the initial response is sent
         return this.db(DOCUMENTS_TABLE)
           .where({ id: docId })
           .update({
@@ -129,7 +125,7 @@ class DocumentService implements IDocumentService { // Removed export
       throw dbError; // Re-throw the original error
     }
   }
-  // Method implementation matches interface signature (using QueryOptions)
+  // Method implementation matches interface signature (using QueryOptions from model)
   async query(options: QueryOptions = {}): Promise<{ documents: DbDocumentType[]; total: number }> {
     // Parse options using querySchema
     const {
@@ -178,7 +174,7 @@ class DocumentService implements IDocumentService { // Removed export
     }
   }
 
-  // Method implementation matches reverted interface signature and return type
+  // Method implementation matches interface signature and return type
   async findById(id: string): Promise<DbDocumentType | null> {
     try {
       const dbDoc = await this.db(DOCUMENTS_TABLE)
@@ -240,5 +236,5 @@ class DocumentService implements IDocumentService { // Removed export
   }
 }
 
-// Added back instance export, initialized using getInstance and imported dependencies
+// Keep instance export
 export const documentService = DocumentService.getInstance(db, embeddingService);
