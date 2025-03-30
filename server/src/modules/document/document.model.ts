@@ -6,6 +6,7 @@ export const documentSchema = z.object({
   filename: z.string().min(1),
   path: z.string().min(1),
   content: z.string(),
+  collection_id: z.string().uuid().nullable(),
   metadata: z.object({
     originalSize: z.number(),
     mimeType: z.string(),

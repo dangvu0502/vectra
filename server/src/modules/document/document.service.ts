@@ -13,7 +13,11 @@ import { embeddingService, type IEmbeddingService } from './embedding.service'; 
 
 // Interface using DbDocumentType and QueryOptions from model.ts
 export interface IDocumentService {
-  upload(file: Express.Multer.File, content: string): Promise<DbDocumentType>;
+  upload(params: {
+    file: Express.Multer.File;
+    content: string;
+    collectionId?: string;
+  }): Promise<DbDocumentType>;
   query(options?: QueryOptions): Promise<{ documents: DbDocumentType[]; total: number }>; // Use QueryOptions again
   findById(id: string): Promise<DbDocumentType | null>;
   delete(id: string): Promise<void>;
@@ -43,7 +47,11 @@ class DocumentService implements IDocumentService { // Keep class definition
   }
 
   // Method implementation returns DbDocumentType again
-  async upload(file: Express.Multer.File, content: string): Promise<DbDocumentType> {
+  async upload({ file, content, collectionId }: {
+    file: Express.Multer.File;
+    content: string;
+    collectionId?: string;
+  }): Promise<DbDocumentType> {
     const docId = uuidv4();
     // Use DocumentConfig if it defines the upload directory, otherwise use a default/env var
     const uploadDir = DocumentConfig?.upload?.directory || process.env.UPLOAD_DIR || 'uploads';
@@ -64,6 +72,7 @@ class DocumentService implements IDocumentService { // Keep class definition
         filename: file.originalname,
         path: newPath, // Store relative or absolute path based on your needs
         content: content, // Content might be large, consider storing separately if needed
+        collection_id: collectionId || null, // Use collectionId from params
         metadata: {
           originalSize: file.size,
           mimeType: file.mimetype,

@@ -38,7 +38,11 @@ class DocumentController { // Keep class definition
 
       const content = await fs.readFile(req.file.path, 'utf-8');
       // Service method now returns validated DbDocumentType
-      const doc: DbDocumentType = await this.documentService.upload(req.file, content);
+      const doc: DbDocumentType = await this.documentService.upload({
+        file: req.file,
+        content,
+        collectionId: req.body?.collection_id
+      });
       // Validation here is likely redundant as the service should return validated data
       // const validatedDoc = documentSchema.parse(doc);
 
