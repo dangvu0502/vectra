@@ -9,7 +9,7 @@ import type { PgVector } from '@mastra/pg';
 // Default chunking options (can be overridden if needed)
 const DEFAULT_CHUNK_SIZE = 1000;
 const DEFAULT_OVERLAP_SIZE = 200;
-const VECTOR_INDEX_NAME = 'mastra_vectors'; // Set to the newly created table name
+const VECTOR_INDEX_NAME = 'text_embeddings'; // Updated table name
 
 // Interface defining the service's responsibilities
 export interface IEmbeddingService {

@@ -1,19 +1,49 @@
-import { env } from './environment';
-import { Knex } from 'knex';
+import { env } from '@/config/environment';
+import type { Knex } from 'knex';
 
-export const knexConfig: Knex.Config = {
-  client: 'pg',
-  connection: env.DATABASE_URL,
-  pool: {
-    min: 2,
-    max: 10
+const config: { [key: string]: Knex.Config } = {
+  development: {
+    client: 'pg',
+    connection: env.DATABASE_URL,
+    pool: {
+      min: 2,
+      max: 10
+    },
+    migrations: {
+      directory: './src/database/migrations',
+      extension: 'ts'
+    },
+    seeds: {
+      directory: './src/database/seeds',
+      extension: 'ts'
+    }
   },
-  migrations: {
-    directory: './src/database/migrations',
-    extension: 'ts'
+
+  test: {
+    client: 'pg',
+    connection: env.DATABASE_URL,
+    pool: {
+      min: 2,
+      max: 10
+    },
+    migrations: {
+      directory: './src/database/migrations',
+      extension: 'ts'
+    }
   },
-  seeds: {
-    directory: './src/database/seeds',
-    extension: 'ts'
+
+  production: {
+    client: 'pg',
+    connection: env.DATABASE_URL,
+    pool: {
+      min: 2,
+      max: 10
+    },
+    migrations: {
+      directory: './src/database/migrations',
+      extension: 'ts'
+    }
   }
-}; 
+};
+
+export default config; 

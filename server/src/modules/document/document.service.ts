@@ -7,7 +7,7 @@ import { DocumentConfig } from '../core/config'; // Assuming this config is stil
 import type { Document as DbDocumentType, QueryOptions } from './document.model';
 import { db } from '@/database/connection'; // Import db instance
 import { DocumentNotFoundError } from '@/modules/core/errors'; // Import error type
-import { DOCUMENTS_TABLE, documentSchema, querySchema } from './document.model';
+import { DOCUMENTS_TABLE as FILES_TABLE, documentSchema, querySchema } from './document.model';
 import { embeddingService, type IEmbeddingService } from './embedding.service'; // Import EmbeddingService interface AND INSTANCE
 // Remove import from ./types
 
@@ -74,7 +74,7 @@ class DocumentService implements IDocumentService { // Keep class definition
       };
 
       // Insert document metadata into the database
-      const [insertedRecord] = await this.db(DOCUMENTS_TABLE)
+      const [insertedRecord] = await this.db(FILES_TABLE)
         .insert(docData)
         .returning('*');
 
@@ -91,7 +91,7 @@ class DocumentService implements IDocumentService { // Keep class definition
         console.log(`Embedding process initiated successfully for document ${docId}`);
         // Update document metadata in DB to mark embedding started/completed using jsonb_set
         // This update happens *after* the initial response is sent
-        return this.db(DOCUMENTS_TABLE)
+        return this.db(FILES_TABLE)
           .where({ id: docId })
           .update({
             metadata: this.db.raw('jsonb_set(jsonb_set(metadata, \'{embeddingsCreated}\', \'true\'), \'{embeddingsTimestamp}\', ?::jsonb)', [JSON.stringify(new Date().toISOString())]),
@@ -101,7 +101,7 @@ class DocumentService implements IDocumentService { // Keep class definition
         console.error(`Embedding failed for document ${docId}:`, embeddingError);
         // Optionally update document metadata in DB to mark embedding error using jsonb_set
         const errorMsg = embeddingError instanceof Error ? embeddingError.message : 'Unknown embedding error';
-        return this.db(DOCUMENTS_TABLE)
+        return this.db(FILES_TABLE)
           .where({ id: docId })
           .update({
             metadata: this.db.raw('jsonb_set(metadata, \'{embeddingError}\', ?::jsonb)', [JSON.stringify(errorMsg)]),
@@ -142,7 +142,7 @@ class DocumentService implements IDocumentService { // Keep class definition
     const skip = (pageNum > 0 ? pageNum - 1 : 0) * limitNum;
 
     try {
-      let queryBuilder = this.db(DOCUMENTS_TABLE);
+      let queryBuilder = this.db(FILES_TABLE);
 
       // Add search if query parameter is provided
       if (q) {
@@ -177,7 +177,7 @@ class DocumentService implements IDocumentService { // Keep class definition
   // Method implementation matches interface signature and return type
   async findById(id: string): Promise<DbDocumentType | null> {
     try {
-      const dbDoc = await this.db(DOCUMENTS_TABLE)
+      const dbDoc = await this.db(FILES_TABLE)
         .where({ id })
         .first(); // Use first()
 
@@ -202,7 +202,7 @@ class DocumentService implements IDocumentService { // Keep class definition
 
     try {
       // 2. Delete from database first
-      const deletedRows = await this.db(DOCUMENTS_TABLE)
+      const deletedRows = await this.db(FILES_TABLE)
         .where({ id })
         .delete();
 

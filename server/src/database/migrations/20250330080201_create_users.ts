@@ -18,4 +18,7 @@ export async function up(knex: Knex): Promise<void> {
   );
 }
 
-export const down = async function (knex: Knex) {};
+export const down = async function (knex: Knex): Promise<void> {
+  // Drop the users table (this will automatically drop associated indexes)
+  await knex.schema.dropTableIfExists("users");
+};

@@ -60,4 +60,4 @@ export const querySchema = z.object({
 export type QueryOptions = z.infer<typeof querySchema>;
 
 // Database table name
-export const DOCUMENTS_TABLE = 'documents';
+export const DOCUMENTS_TABLE = 'files';

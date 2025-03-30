@@ -39,7 +39,7 @@ class ChatService implements IChatService {
 
       // Log parameters before querying
       const queryParams = {
-        indexName: "mastra_vectors", // Make sure this matches your index/table name
+        indexName: "text_embeddings", // Make sure this matches your index/table name
         queryVector: embedding, // Use embedded message for similarity search
         topK: 3, // Fetch top 3 relevant chunks
         filter: { 'metadata.doc_id': docId }, // Use dot notation for nested filter

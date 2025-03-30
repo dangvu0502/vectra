@@ -1,7 +1,7 @@
 import { Knex } from 'knex';
 
 export async function up(knex: Knex): Promise<void> {
-  await knex.schema.createTable('documents', (table) => {
+  await knex.schema.createTable('files', (table) => {
     table.uuid('id').primary();
     table.string('filename').notNullable();
     table.string('path').notNullable();
@@ -12,10 +12,10 @@ export async function up(knex: Knex): Promise<void> {
   });
 
   // Add indexes
-  await knex.schema.raw('CREATE INDEX documents_content_idx ON documents USING gin(to_tsvector(\'english\', content))');
+  await knex.schema.raw('CREATE INDEX files_content_idx ON files USING gin(to_tsvector(\'english\', content))');
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await knex.schema.dropTable('documents');
-  await knex.schema.raw('DROP INDEX IF EXISTS documents_content_idx');
-} 
+  await knex.schema.dropTable('files');
+  await knex.schema.raw('DROP INDEX IF EXISTS files_content_idx');
+}

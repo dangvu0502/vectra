@@ -1,7 +1,8 @@
+import config from '@/config/database';
+import { env } from '@/config/environment';
 import knex from 'knex';
-import { knexConfig } from '../config/database';
 
-export const db = knex(knexConfig);
+export const db = knex(config[env.NODE_ENV]);
 
 export const initializeDatabase = async () => {
   try {

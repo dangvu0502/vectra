@@ -1,6 +1,6 @@
 import type { Knex } from 'knex';
 
-const TABLE_NAME = 'mastra_vectors';
+const TABLE_NAME = 'text_embeddings';
 const VECTOR_DIMENSION = 1536; // Dimension for text-embedding-3-small
 
 export async function up(knex: Knex): Promise<void> {
