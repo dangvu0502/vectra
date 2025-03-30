@@ -7,7 +7,8 @@ import type { IDocumentService } from './document.service';
 import { documentService } from './document.service';
 // Import Zod schemas and derived types from model.ts
 import { documentSchema, querySchema, type Document as DbDocumentType } from './document.model';
-
+import { v4 as uuidv4 } from 'uuid';
+import { TEST_USER_ID } from '@/database/constants';
 
 class DocumentController { // Keep class definition
   private static instance: DocumentController | null = null; // Keep static instance
@@ -41,7 +42,8 @@ class DocumentController { // Keep class definition
       const doc: DbDocumentType = await this.documentService.upload({
         file: req.file,
         content,
-        collectionId: req.body?.collection_id
+        collectionId: req.body?.collection_id,
+        userId: TEST_USER_ID
       });
       // Validation here is likely redundant as the service should return validated data
       // const validatedDoc = documentSchema.parse(doc);
@@ -138,6 +140,5 @@ class DocumentController { // Keep class definition
     }
   }
 }
-
 // Keep instance export
 export const documentController = DocumentController.getInstance(documentService);

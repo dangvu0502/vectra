@@ -11,6 +11,11 @@ const config: { [key: string]: Knex.Config } = {
     },
     migrations: {
       directory: './src/database/migrations',
+      disableMigrationsListValidation: true,
+      loadExtensions: ['.ts'],
+      schemaName: 'public',
+      tableName: 'knex_migrations',
+      disableTransactions: false,
       extension: 'ts'
     },
     seeds: {
@@ -46,4 +51,4 @@ const config: { [key: string]: Knex.Config } = {
   }
 };
 
-export default config; 
+export default config;

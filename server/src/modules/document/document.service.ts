@@ -17,6 +17,7 @@ export interface IDocumentService {
     file: Express.Multer.File;
     content: string;
     collectionId?: string;
+    userId: string;
   }): Promise<DbDocumentType>;
   query(options?: QueryOptions): Promise<{ documents: DbDocumentType[]; total: number }>; // Use QueryOptions again
   findById(id: string): Promise<DbDocumentType | null>;
@@ -47,10 +48,11 @@ class DocumentService implements IDocumentService { // Keep class definition
   }
 
   // Method implementation returns DbDocumentType again
-  async upload({ file, content, collectionId }: {
+  async upload({ file, content, collectionId, userId }: {
     file: Express.Multer.File;
     content: string;
     collectionId?: string;
+    userId: string;
   }): Promise<DbDocumentType> {
     const docId = uuidv4();
     // Use DocumentConfig if it defines the upload directory, otherwise use a default/env var
@@ -73,6 +75,7 @@ class DocumentService implements IDocumentService { // Keep class definition
         path: newPath, // Store relative or absolute path based on your needs
         content: content, // Content might be large, consider storing separately if needed
         collection_id: collectionId || null, // Use collectionId from params
+        user_id: userId,
         metadata: {
           originalSize: file.size,
           mimeType: file.mimetype,

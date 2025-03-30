@@ -66,16 +66,17 @@ export class EmbeddingService implements IEmbeddingService {
   async processDocument(document: DbDocumentType): Promise<void> { // Use DbDocumentType
     console.log(`Processing document for embedding: ${document.id} (${document.filename})`);
     try {
-      // Construct a flat metadata object for MDocument
       const metadata = {
-        doc_id: document.id, // Crucial for filtering
+        user_id: document.user_id,
+        collection_id: document.collection_id,
+        file_id: document.id, // Crucial for filtering
         filename: document.filename,
         created_at: document.created_at.toISOString(), // Use created_at from DbDocumentType
         ...(document.metadata || {}), // Spread existing metadata if it exists
       };
 
       const doc = MDocument.fromText(document.content, {
-        metadata: metadata, // Pass the flat metadata object
+        metadata: metadata, 
         chunkSize: this.options.chunkSize,
         overlapSize: this.options.overlapSize,
       });
@@ -109,7 +110,7 @@ export class EmbeddingService implements IEmbeddingService {
         indexName: VECTOR_INDEX_NAME,
         vectors: vectorEmbeddings,
         ids: vectorIds,
-        metadata: vectorMetadata
+        metadata: vectorMetadata,
       };
 
       console.log(`Upserting ${vectorEmbeddings.length} vectors into index '${VECTOR_INDEX_NAME}' for document ${document.id}`);
@@ -153,7 +154,7 @@ export class EmbeddingService implements IEmbeddingService {
       /*
       const deleteResult = await this.vectorStore.delete({ // Method and filter syntax need verification
           indexName: VECTOR_INDEX_NAME,
-          filter: { 'metadata.doc_id': docId } // Example filter, needs verification
+          filter: { 'metadata.file_id': docId } // Example filter, needs verification
       });
       console.log(`Deletion result for document ${docId}:`, deleteResult);
       */

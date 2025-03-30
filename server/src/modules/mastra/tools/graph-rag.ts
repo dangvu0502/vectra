@@ -15,5 +15,5 @@ export const graphRagTool = createGraphRAGTool({
   //   randomWalkSteps: 100,
   //   restartProb: 0.15
   // },
-  description: "Access and analyze relationships between information in the knowledge base using Graph RAG. When discussing a specific document, use the 'filter' parameter with the 'doc_id' metadata field (e.g., filter: { doc_id: '...' }) to focus the analysis on that document.",
+  description: "Access and analyze relationships between information in the knowledge base using Graph RAG. When discussing a specific document, use the 'filter' parameter with the 'file_id' metadata field (e.g., filter: { file_id: '...' }) to focus the analysis on that document.",
 });

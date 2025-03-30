@@ -17,5 +17,5 @@ export const documentQueryTool = createVectorQueryTool({
   //   model: languageModel, // Use centralized language model if reranking
   //   options: { topK: 5 }
   // },
-  description: "Access the knowledge base to find information from stored documents using vector search. To search within a specific document, provide a 'filter' object in the arguments, like { filter: { doc_id: '...' } }.",
+  description: "Access the knowledge base to find information from stored documents using vector search. To search within a specific document, provide a 'filter' object in the arguments, like { filter: { file_id: '...' } }.",
 });
