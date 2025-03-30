@@ -75,7 +75,7 @@ export class EmbeddingService implements IEmbeddingService {
       };
 
       const doc = MDocument.fromText(document.content, {
-        ...metadata, // Pass the flat metadata object
+        metadata: metadata, // Pass the flat metadata object
         chunkSize: this.options.chunkSize,
         overlapSize: this.options.overlapSize,
       });
