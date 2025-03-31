@@ -4,7 +4,7 @@ export const chatMessageSchema = z.object({
   id: z.string().uuid(),
   message: z.string(),
   response: z.string(),
-  doc_id: z.string().uuid().optional(),
+  file_id: z.string().uuid().optional(),
   metadata: z.object({
     model: z.string(),
     tokens: z.number(),

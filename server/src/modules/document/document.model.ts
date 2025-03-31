@@ -6,15 +6,46 @@ export const documentSchema = z.object({
   filename: z.string().min(1),
   path: z.string().min(1),
   content: z.string(),
+  user_id: z.string().uuid(),
+  collection_id: z.string().uuid().nullable(),
   metadata: z.object({
     originalSize: z.number(),
     mimeType: z.string(),
     embeddingsCreated: z.boolean().default(false),
-    embeddingsTimestamp: z.date().optional(),
+    // Preprocess to handle string dates from JSONB
+    embeddingsTimestamp: z.preprocess((arg) => {
+      if (typeof arg === 'string') {
+        try {
+          return new Date(arg);
+        } catch (e) {
+          return arg; // Let Zod handle the invalid date string
+        }
+      }
+      return arg; // Pass through if already Date or null/undefined
+    }, z.date().optional()),
     embeddingError: z.string().optional()
   }),
-  created_at: z.date(),
-  updated_at: z.date()
+  // Preprocess created_at/updated_at if they might come from DB as strings
+  created_at: z.preprocess((arg) => {
+    if (typeof arg === 'string') {
+      try {
+        return new Date(arg);
+      } catch (e) {
+        return arg;
+      }
+    }
+    return arg;
+  }, z.date()),
+  updated_at: z.preprocess((arg) => {
+    if (typeof arg === 'string') {
+      try {
+        return new Date(arg);
+      } catch (e) {
+        return arg;
+      }
+    }
+    return arg;
+  }, z.date())
 }).strict();
 
 export type Document = z.infer<typeof documentSchema>;
@@ -31,4 +62,4 @@ export const querySchema = z.object({
 export type QueryOptions = z.infer<typeof querySchema>;
 
 // Database table name
-export const DOCUMENTS_TABLE = 'documents';
+export const DOCUMENTS_TABLE = 'files';

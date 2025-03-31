@@ -1,31 +1,59 @@
+import { env } from "@/config/environment";
+import { createLoggedTool, documentQueryTool, embeddingModel, graphRagTool } from "@/modules/mastra/tools";
+import { openai } from "@ai-sdk/openai";
 import { Agent } from "@mastra/core/agent";
-import { documentQueryTool } from "../tools/rag-tool"; // Import the Vector RAG tool
-import { graphRagTool } from "../tools/graph-rag-tool"; // Import the Graph RAG tool
-import { thinkTool } from "../tools/think-tool"; // Import the Think tool
-import { memory, languageModel } from "../config"; // Import centralized memory and language model
+import { Memory } from "@mastra/memory";
+import { PgVector, PostgresStore } from "@mastra/pg";
 
-// Define and export the type for the tools used by this agent
-export type AgentTools = {
-  documentQueryTool: typeof documentQueryTool;
-  graphRagTool: typeof graphRagTool;
-  thinkTool: typeof thinkTool;
-};
+const pgVector = new PgVector(env.DATABASE_URL); // Export pgVector
 
-export const myAgent = new Agent<AgentTools>({
+const postgresStore = new PostgresStore({ connectionString: env.DATABASE_URL });
+
+const languageModel = openai('gpt-4o-mini');
+
+const memory = new Memory({
+  storage: postgresStore,
+  vector: pgVector,
+  embedder: embeddingModel,
+  options: {
+    semanticRecall: {
+      topK: 5,
+      messageRange: 2,
+    },
+    workingMemory: {
+      enabled: true,
+    },
+    lastMessages: 10,
+  },
+});
+
+
+const myAgent = new Agent({
   name: "EmbeddyChatAgent",
   instructions: `You are a helpful assistant. Follow these guidelines:
-1. Information Retrieval:
-   - **Determine Context:** First, analyze the conversation context (user query, history, working memory) to determine if a specific document (\`doc_id\`) is the focus. You may use \`thinkTool\` with \`analysis_type: 'general_reasoning'\` to log this determination.
-   - **Use documentQueryTool:** To find specific facts or text segments. **IMPORTANT:** If a specific \`doc_id\` is identified as the focus, you MUST use a metadata filter like \`{ "doc_id": "the-specific-document-id" }\` when calling this tool. Only search globally if no specific document context is relevant or identified.
-   - **Use graphRagTool:** For complex questions requiring analysis of relationships, patterns, or comparisons across multiple documents. Filtering is not currently supported for this tool.
-2. Structured Reasoning (thinkTool):
-   - **Planning:** Before complex actions or calling tools (especially RAG tools), use \`thinkTool\` with \`analysis_type: 'sequential_planning'\` to outline your plan, including which tool to use and any necessary filters based on context analysis.
-   - After receiving tool output: Use thinkTool with analysis_type 'tool_output_analysis' to summarize findings, analyze relevance, and decide the next step.
-   - For policy checks: Use thinkTool with analysis_type 'policy_compliance_check' to verify adherence to guidelines.
-   - For general complex reasoning: Use thinkTool with analysis_type 'general_reasoning' to break down the problem and document conclusions.
-   - Always provide: input_summary (summary of input), detailed reasoning_steps, and a clear conclusion.
-3. Working Memory: Actively use working memory to store key context, summaries from thinkTool conclusions, user preferences, or intermediate results. Update it proactively. This is crucial for maintaining context.`, // Simplified instructions formatting
+1. Information Retrieval & Context Utilization:
+   - **Check for Provided Context:** **FIRST**, check if a system message provides specific context snippets for the current document ID (\`file_id\`).
+   - **Use Provided Context:** If context snippets are provided in a system message, **YOU MUST base your answer primarily on those snippets.** Do not use tools unless the provided snippets are clearly insufficient to answer the user's query.
+   - **Use Tools (If No Context Provided OR Provided Context Insufficient):** If no context snippets are provided, OR if snippets were provided but are clearly insufficient for the user's query, *then* determine the relevant \`file_id\` and use your tools (\`documentQueryTool\`, \`graphRagTool\`) as needed.
+   - **Tool Usage Rules:**
+     - When using \`documentQueryTool\` or \`graphRagTool\` and a specific \`file_id\` is the focus of the conversation (check system messages or thread ID), you **MUST** provide the filter argument: \`{ filter: { 'metadata.file_id': "the-specific-document-id" } }\`. Use the user's query text for the tool call unless it's clearly inappropriate (e.g., for a generic summary, use "summary of the document").
+     - Only omit the filter if NO specific document context is relevant or identified.
+2. Working Memory: Actively use working memory to store key context (including the current \`file_id\` if applicable), user preferences, or intermediate results. Update it proactively. This is crucial for maintaining context.`,
   model: languageModel, // Use centralized language model
   memory: memory, // Add the configured memory
-  tools: { documentQueryTool, graphRagTool, thinkTool }, // Register all tools
+  // Register only the LOGGED wrapper tools
+  tools: {
+    documentQueryTool: createLoggedTool({
+      originalTool: documentQueryTool,
+    }), // Use logged tool instance
+    graphRagTool: createLoggedTool({
+      originalTool: graphRagTool,
+    })
+  },
 });
+
+export {
+  languageModel,
+  myAgent, pgVector,
+  postgresStore
+};
