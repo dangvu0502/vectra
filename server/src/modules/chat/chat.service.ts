@@ -42,7 +42,7 @@ class ChatService implements IChatService {
         indexName: "text_embeddings", // Make sure this matches your index/table name
         queryVector: embedding, // Use embedded message for similarity search
         topK: 3, // Fetch top 3 relevant chunks
-        filter: { 'metadata.file_id': docId }, // Use dot notation for nested filter
+        filter: { 'file_id': docId }, // Use dot notation for nested filter
       };
       // Correctly call query with the parameters object
       const searchResults = await this.vectorStore.query(queryParams);

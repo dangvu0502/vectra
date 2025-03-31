@@ -76,7 +76,7 @@ export class EmbeddingService implements IEmbeddingService {
       };
 
       const doc = MDocument.fromText(document.content, {
-        metadata: metadata, 
+        ...metadata, 
         chunkSize: this.options.chunkSize,
         overlapSize: this.options.overlapSize,
       });
@@ -154,7 +154,7 @@ export class EmbeddingService implements IEmbeddingService {
       /*
       const deleteResult = await this.vectorStore.delete({ // Method and filter syntax need verification
           indexName: VECTOR_INDEX_NAME,
-          filter: { 'metadata.file_id': docId } // Example filter, needs verification
+          filter: { 'file_id': docId } // Example filter, needs verification
       });
       console.log(`Deletion result for document ${docId}:`, deleteResult);
       */
