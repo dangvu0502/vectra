@@ -25,3 +25,32 @@ export class DocumentProcessingError extends DocumentError {
     this.name = 'DocumentProcessingError';
   }
 }
+
+// File-related errors
+export class FileError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'FileError';
+  }
+}
+
+export class FileNotFoundError extends FileError {
+  constructor(id: string) {
+    super(`File with id ${id} not found`);
+    this.name = 'FileNotFoundError';
+  }
+}
+
+export class FileValidationError extends FileError {
+  constructor(message: string) {
+    super(message);
+    this.name = 'FileValidationError';
+  }
+}
+
+export class FileProcessingError extends FileError {
+  constructor(message: string, public readonly cause?: Error) {
+    super(message);
+    this.name = 'FileProcessingError';
+  }
+}

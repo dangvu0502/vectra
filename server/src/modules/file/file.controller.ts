@@ -1,34 +1,34 @@
 import type { Request, Response } from 'express';
 import fs from 'fs/promises';
 import { z } from 'zod';
-import { DocumentNotFoundError } from '@/modules/core/errors';
+import { DocumentNotFoundError as FileNotFoundError } from '@/modules/core/errors';
 // Import service interface and instance
-import type { IDocumentService } from './document.service';
-import { documentService } from './document.service';
+import type { IFileService } from './file.service';
+import { fileService } from './file.service';
 // Import Zod schemas and derived types from model.ts
-import { documentSchema, querySchema, type Document as DbDocumentType } from './document.model';
+import { fileSchema, querySchema, type File as DbFileType } from './file.model';
 import { v4 as uuidv4 } from 'uuid';
 import { TEST_USER_ID } from '@/database/constants';
 
-class DocumentController { // Keep class definition
-  private static instance: DocumentController | null = null; // Keep static instance
-  private readonly documentService: IDocumentService;
+class FileController { // Keep class definition
+  private static instance: FileController | null = null; // Keep static instance
+  private readonly fileService: IFileService;
 
-  private constructor(documentService: IDocumentService) { // Keep constructor private
-    this.documentService = documentService;
+  private constructor(fileService: IFileService) { // Keep constructor private
+    this.fileService = fileService;
   }
 
   // Keep static getInstance method
-  static getInstance(documentService: IDocumentService): DocumentController {
-    if (!DocumentController.instance) {
-      DocumentController.instance = new DocumentController(documentService);
+  static getInstance(fileService: IFileService): FileController {
+    if (!FileController.instance) {
+      FileController.instance = new FileController(fileService);
     }
-    return DocumentController.instance;
+    return FileController.instance;
   }
 
   // Keep static resetInstance method (optional)
   static resetInstance(): void {
-    DocumentController.instance = null;
+    FileController.instance = null;
   }
 
   async upload(req: Request & { file?: Express.Multer.File }, res: Response) {
@@ -38,34 +38,34 @@ class DocumentController { // Keep class definition
       }
 
       const content = await fs.readFile(req.file.path, 'utf-8');
-      // Service method now returns validated DbDocumentType
-      const doc: DbDocumentType = await this.documentService.upload({
+      // Service method now returns validated DbFileType
+      const file: DbFileType = await this.fileService.upload({
         file: req.file,
         content,
         collectionId: req.body?.collection_id,
         userId: TEST_USER_ID
       });
       // Validation here is likely redundant as the service should return validated data
-      // const validatedDoc = documentSchema.parse(doc);
+      // const validatedFile = fileSchema.parse(file);
 
       // Check metadata for embedding status - Note: this reflects status *at time of DB record creation/update*
       // The async embedding process might still be running or fail later.
-      const embeddingStatus = doc.metadata?.embeddingsCreated
-        ? { embeddingStatus: 'success', embeddingTimestamp: doc.metadata.embeddingsTimestamp }
-        : doc.metadata?.embeddingError
-          ? { embeddingStatus: 'error', embeddingError: doc.metadata.embeddingError }
+      const embeddingStatus = file.metadata?.embeddingsCreated
+        ? { embeddingStatus: 'success', embeddingTimestamp: file.metadata.embeddingsTimestamp }
+        : file.metadata?.embeddingError
+          ? { embeddingStatus: 'error', embeddingError: file.metadata.embeddingError }
           : { embeddingStatus: 'pending' }; // Indicate pending if not success/error yet
 
       res.status(201).json({
         status: 'success',
         data: {
-          ...doc, // Use the validated doc from the service
+          ...file, // Use the validated file from the service
           embedding: embeddingStatus
         }
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return void res.status(400).json({ message: 'Invalid document data', errors: error.errors });
+        return void res.status(400).json({ message: 'Invalid file data', errors: error.errors });
       }
       if (error instanceof Error) {
         return void res.status(500).json({ message: error.message });
@@ -79,14 +79,14 @@ class DocumentController { // Keep class definition
       console.log('Query params:', req.query);
       // Validate query parameters first
       const validatedQuery = querySchema.parse(req.query);
-      // Service method returns validated documents and total
-      const result = await this.documentService.query(validatedQuery);
+      // Service method returns validated files and total
+      const result = await this.fileService.query(validatedQuery);
       // Validation here is redundant as the service guarantees validated output based on its return type
-      // const validatedDocs = z.array(documentSchema).parse(result.documents);
-      console.log('Documents found:', result.documents.length);
+      // const validatedFiles = z.array(fileSchema).parse(result.files);
+      console.log('Files found:', result.files.length);
       res.json({
         status: 'success',
-        data: { documents: result.documents, total: result.total } // Use result directly
+        data: { files: result.files, total: result.total } // Use result directly
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -101,17 +101,17 @@ class DocumentController { // Keep class definition
 
   async findById(req: Request, res: Response) {
     try {
-      // Service method returns validated DbDocumentType or null
-      const doc = await this.documentService.findById(req.params.id);
-      if (!doc) {
-        return void res.status(404).json({ message: `Document with id "${req.params.id}" not found` });
+      // Service method returns validated DbFileType or null
+      const file = await this.fileService.findById(req.params.id);
+      if (!file) {
+        return void res.status(404).json({ message: `File with id "${req.params.id}" not found` });
       }
       // Validation here is redundant
-      // const validatedDoc = documentSchema.parse(doc);
-      res.json({ data: doc }); // Use doc directly
+      // const validatedFile = fileSchema.parse(file);
+      res.json({ data: file }); // Use file directly
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return void res.status(400).json({ message: 'Invalid document ID', errors: error.errors });
+        return void res.status(400).json({ message: 'Invalid file ID', errors: error.errors });
       }
       if (error instanceof Error) {
         return void res.status(500).json({ message: error.message });
@@ -124,13 +124,13 @@ class DocumentController { // Keep class definition
     try {
       // Validate the ID parameter from the request
       const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
-      await this.documentService.delete(id);
+      await this.fileService.delete(id);
       res.status(204).send();
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return void res.status(400).json({ message: 'Invalid document ID', errors: error.errors });
+        return void res.status(400).json({ message: 'Invalid file ID', errors: error.errors });
       }
-      if (error instanceof DocumentNotFoundError) {
+      if (error instanceof FileNotFoundError) {
         return void res.status(404).json({ message: error.message });
       }
       if (error instanceof Error) {
@@ -141,4 +141,4 @@ class DocumentController { // Keep class definition
   }
 }
 // Keep instance export
-export const documentController = DocumentController.getInstance(documentService);
+export const fileController = FileController.getInstance(fileService);

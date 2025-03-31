@@ -1,31 +1,30 @@
-import fs from 'fs/promises'; // Keep one set of imports
+import fs from 'fs/promises';
 import type { Knex } from 'knex';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import { DocumentConfig } from '../core/config'; // Assuming this config is still relevant for uploads
-// Keep QueryOptions import from model.ts, rename DbDocumentType for clarity if desired, or keep as is.
-import type { Document as DbDocumentType, QueryOptions } from './document.model';
+import { FileConfig } from '../core/config'; // Assuming this config is still relevant for uploads
+// Keep QueryOptions import from model.ts, rename DbFileType for clarity if desired, or keep as is.
+import type { File as DbFileType, QueryOptions } from './file.model';
 import { db } from '@/database/connection'; // Import db instance
-import { DocumentNotFoundError } from '@/modules/core/errors'; // Import error type
-import { DOCUMENTS_TABLE as FILES_TABLE, documentSchema, querySchema } from './document.model';
-import { embeddingService, type IEmbeddingService } from './embedding.service'; // Import EmbeddingService interface AND INSTANCE
-// Remove import from ./types
+import { FileNotFoundError } from '@/modules/core/errors'; // Import error type
+import { FILES_TABLE, fileSchema, querySchema } from './file.model';
+import { embeddingService, type IEmbeddingService } from './file.embedding.service'; // Import EmbeddingService interface AND INSTANCE
 
-// Interface using DbDocumentType and QueryOptions from model.ts
-export interface IDocumentService {
+// Interface using DbFileType and QueryOptions from model.ts
+export interface IFileService {
   upload(params: {
     file: Express.Multer.File;
     content: string;
     collectionId?: string;
     userId: string;
-  }): Promise<DbDocumentType>;
-  query(options?: QueryOptions): Promise<{ documents: DbDocumentType[]; total: number }>; // Use QueryOptions again
-  findById(id: string): Promise<DbDocumentType | null>;
+  }): Promise<DbFileType>;
+  query(options?: QueryOptions): Promise<{ files: DbFileType[]; total: number }>; // Use QueryOptions again
+  findById(id: string): Promise<DbFileType | null>;
   delete(id: string): Promise<void>;
 }
 
-class DocumentService implements IDocumentService { // Keep class definition
-  private static instance: DocumentService | null = null; // Keep static instance
+class FileService implements IFileService { // Keep class definition
+  private static instance: FileService | null = null; // Keep static instance
   private readonly db: Knex;
   private readonly embeddingService: IEmbeddingService;
 
@@ -35,42 +34,42 @@ class DocumentService implements IDocumentService { // Keep class definition
   }
 
   // Keep static getInstance method
-  static getInstance(db: Knex, embeddingService: IEmbeddingService): DocumentService {
-    if (!DocumentService.instance) {
-      DocumentService.instance = new DocumentService(db, embeddingService);
+  static getInstance(db: Knex, embeddingService: IEmbeddingService): FileService {
+    if (!FileService.instance) {
+      FileService.instance = new FileService(db, embeddingService);
     }
-    return DocumentService.instance;
+    return FileService.instance;
   }
 
   // Keep static resetInstance method (optional)
   static resetInstance(): void {
-    DocumentService.instance = null;
+    FileService.instance = null;
   }
 
-  // Method implementation returns DbDocumentType again
+  // Method implementation returns DbFileType again
   async upload({ file, content, collectionId, userId }: {
     file: Express.Multer.File;
     content: string;
     collectionId?: string;
     userId: string;
-  }): Promise<DbDocumentType> {
-    const docId = uuidv4();
-    // Use DocumentConfig if it defines the upload directory, otherwise use a default/env var
-    const uploadDir = DocumentConfig?.upload?.directory || process.env.UPLOAD_DIR || 'uploads';
+  }): Promise<DbFileType> {
+    const fileId = uuidv4();
+    // Use FileConfig if it defines the upload directory, otherwise use a default/env var
+    const uploadDir = FileConfig?.upload?.directory || process.env.UPLOAD_DIR || 'uploads';
     const extension = path.extname(file.originalname);
-    const newFilename = `${docId}${extension}`;
+    const newFilename = `${fileId}${extension}`;
     // Ensure upload directory exists
     await fs.mkdir(uploadDir, { recursive: true });
     const newPath = path.join(uploadDir, newFilename);
 
     // Variable to hold the validated DB document
-    let createdDbDocument: DbDocumentType;
+    let createdDbFile: DbFileType;
 
     try {
       await fs.rename(file.path, newPath);
 
-      const docData = {
-        id: docId,
+      const fileData = {
+        id: fileId,
         filename: file.originalname,
         path: newPath, // Store relative or absolute path based on your needs
         content: content, // Content might be large, consider storing separately if needed
@@ -87,34 +86,34 @@ class DocumentService implements IDocumentService { // Keep class definition
 
       // Insert document metadata into the database
       const [insertedRecord] = await this.db(FILES_TABLE)
-        .insert(docData)
+        .insert(fileData)
         .returning('*');
 
       // Validate the inserted record right away
-      createdDbDocument = documentSchema.parse(insertedRecord);
+      createdDbFile = fileSchema.parse(insertedRecord);
 
-      // Type assertion or mapping might not be strictly needed if DbDocumentType structure matches EmbeddingDocumentType
-      // Ensure the object passed matches the expected structure for processDocument
-      const documentForEmbedding: DbDocumentType = createdDbDocument; // Directly use the validated DB document if structure matches
+      // Type assertion or mapping might not be strictly needed if DbFileType structure matches EmbeddingFileType
+      // Ensure the object passed matches the expected structure for processFile
+      const fileForEmbedding: DbFileType = createdDbFile; // Directly use the validated DB document if structure matches
 
       // Asynchronously process embeddings after successful DB insertion
       // Use a non-blocking call, handle potential promise rejection for logging/status update
-      this.embeddingService.processDocument(documentForEmbedding).then(() => {
-        console.log(`Embedding process initiated successfully for document ${docId}`);
+      this.embeddingService.processFile(fileForEmbedding).then(() => {
+        console.log(`Embedding process initiated successfully for file ${fileId}`);
         // Update document metadata in DB to mark embedding started/completed using jsonb_set
         // This update happens *after* the initial response is sent
         return this.db(FILES_TABLE)
-          .where({ id: docId })
+          .where({ id: fileId })
           .update({
             metadata: this.db.raw('jsonb_set(jsonb_set(metadata, \'{embeddingsCreated}\', \'true\'), \'{embeddingsTimestamp}\', ?::jsonb)', [JSON.stringify(new Date().toISOString())]),
             updated_at: new Date()
           });
       }).catch(embeddingError => { // Catch errors from the async embedding process
-        console.error(`Embedding failed for document ${docId}:`, embeddingError);
+        console.error(`Embedding failed for file ${fileId}:`, embeddingError);
         // Optionally update document metadata in DB to mark embedding error using jsonb_set
         const errorMsg = embeddingError instanceof Error ? embeddingError.message : 'Unknown embedding error';
         return this.db(FILES_TABLE)
-          .where({ id: docId })
+          .where({ id: fileId })
           .update({
             metadata: this.db.raw('jsonb_set(metadata, \'{embeddingError}\', ?::jsonb)', [JSON.stringify(errorMsg)]),
             updated_at: new Date()
@@ -122,10 +121,10 @@ class DocumentService implements IDocumentService { // Keep class definition
       });
 
       // Return the validated DB document directly
-      return createdDbDocument;
+      return createdDbFile;
 
     } catch (dbError) {
-      console.error("Error during document upload:", dbError);
+      console.error("Error during file upload:", dbError);
       // Clean up uploaded file if DB insert failed or rename succeeded but something else failed
       if (newPath) {
         fs.unlink(newPath).catch(cleanupError => console.error("Error cleaning up file:", cleanupError));
@@ -138,7 +137,7 @@ class DocumentService implements IDocumentService { // Keep class definition
     }
   }
   // Method implementation matches interface signature (using QueryOptions from model)
-  async query(options: QueryOptions = {}): Promise<{ documents: DbDocumentType[]; total: number }> {
+  async query(options: QueryOptions = {}): Promise<{ files: DbFileType[]; total: number }> {
     // Parse options using querySchema
     const {
       q,
@@ -167,17 +166,17 @@ class DocumentService implements IDocumentService { // Keep class definition
       const total = countResult ? parseInt(countResult.count as string, 10) : 0;
 
       // Get paginated results
-      const dbDocuments = await queryBuilder
+      const dbFiles = await queryBuilder
         .orderBy(sortBy, sortOrder) // Use parsed sortBy/sortOrder
         .offset(skip)               // Use calculated skip
         .limit(limitNum)            // Use parsed limitNum
         .select('*'); // Select all columns
 
       // Validate each document against the schema
-      const validatedDocuments = dbDocuments.map(dbDoc => documentSchema.parse(dbDoc));
+      const validatedFiles = dbFiles.map(dbFile => fileSchema.parse(dbFile));
 
       return {
-        documents: validatedDocuments, // Return DbDocumentType array
+        files: validatedFiles, // Return DbFileType array
         total
       };
     } catch (error) {
@@ -187,14 +186,14 @@ class DocumentService implements IDocumentService { // Keep class definition
   }
 
   // Method implementation matches interface signature and return type
-  async findById(id: string): Promise<DbDocumentType | null> {
+  async findById(id: string): Promise<DbFileType | null> {
     try {
-      const dbDoc = await this.db(FILES_TABLE)
+      const dbFile = await this.db(FILES_TABLE)
         .where({ id })
         .first(); // Use first()
 
-      // Return validated DbDocumentType or null
-      return dbDoc ? documentSchema.parse(dbDoc) : null;
+      // Return validated DbFileType or null
+      return dbFile ? fileSchema.parse(dbFile) : null;
 
     } catch (error) {
       console.error("Error in findById:", error);
@@ -204,12 +203,12 @@ class DocumentService implements IDocumentService { // Keep class definition
 
   async delete(id: string): Promise<void> {
     // 1. Find the document to get its path for file deletion
-    // findById now returns DbDocumentType | null
-    const docToDelete = await this.findById(id);
+    // findById now returns DbFileType | null
+    const fileToDelete = await this.findById(id);
 
-    if (!docToDelete) { // Check if document exists
-      console.warn(`Document with id "${id}" not found for deletion.`);
-      throw new DocumentNotFoundError(id);
+    if (!fileToDelete) { // Check if document exists
+      console.warn(`File with id "${id}" not found for deletion.`);
+      throw new FileNotFoundError(id);
     }
 
     try {
@@ -220,33 +219,33 @@ class DocumentService implements IDocumentService { // Keep class definition
 
       if (deletedRows === 0) {
         // This case might happen in race conditions, log a warning
-        console.warn(`Document with id "${id}" was found but delete operation affected 0 rows.`);
+        console.warn(`File with id "${id}" was found but delete operation affected 0 rows.`);
       } else {
-        console.log(`Deleted document record for id "${id}" from database.`);
+        console.log(`Deleted file record for id "${id}" from database.`);
       }
 
       // 3. Delete embeddings (asynchronously, allow potential errors but log them)
-      this.embeddingService.deleteDocumentEmbeddings(id)
+      this.embeddingService.deleteFileEmbeddings(id)
         .catch((embeddingError: any) => {
-          console.error(`Error during async deletion of embeddings for document ${id}:`, embeddingError);
+          console.error(`Error during async deletion of embeddings for file ${id}:`, embeddingError);
         });
 
       // 4. Delete the actual file from storage using the path from the found document
       try {
-        await fs.unlink(docToDelete.path); // Use docToDelete.path
-        console.log(`Deleted file: ${docToDelete.path}`);
+        await fs.unlink(fileToDelete.path); // Use fileToDelete.path
+        console.log(`Deleted file: ${fileToDelete.path}`);
       } catch (fileError: any) {
         // Log error but consider the main deletion successful if DB entry is gone
         // Avoid failing the whole operation just because file cleanup failed (it might already be gone)
-        console.error(`Error deleting file ${docToDelete.path} for document ${id}: ${fileError.message}`);
+        console.error(`Error deleting file ${fileToDelete.path} for file ${id}: ${fileError.message}`);
       }
 
     } catch (dbError) {
-      console.error(`Error deleting document ${id} from database:`, dbError);
+      console.error(`Error deleting file ${id} from database:`, dbError);
       throw dbError; // Re-throw DB error
     }
   }
 }
 
 // Keep instance export
-export const documentService = DocumentService.getInstance(db, embeddingService);
+export const fileService = FileService.getInstance(db, embeddingService);

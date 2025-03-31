@@ -3,7 +3,9 @@ import { z } from 'zod';
 export const API_VERSION = 'v1';
 export const BASE_PATH = '/api';
 export const DOCUMENTS_PATH = 'documents';
+export const FILES_PATH = 'files';
 export const PREFIX = `${BASE_PATH}/${API_VERSION}/${DOCUMENTS_PATH}`;
+export const FILES_PREFIX = `${BASE_PATH}/${API_VERSION}/${FILES_PATH}`;
 
 export const DEFAULT_CONFIG = {
   uploadDir: 'uploads',
@@ -42,6 +44,30 @@ export const DocumentConfig = {
 };
 
 /**
+ * Core file module configuration
+ */
+export const FileConfig = {
+  api: {
+    version: 'v1',
+    basePath: '/api',
+    filesPath: 'files',
+    get prefix() {
+      return `${this.basePath}/${this.version}/${this.filesPath}`;
+    }
+  },
+  upload: {
+    directory: 'uploads',
+    maxFileSize: 10 * 1024 * 1024, // 10MB
+  },
+  pagination: {
+    defaultLimit: 10,
+    maxLimit: 100,
+    defaultSortBy: 'createdAt',
+    defaultSortOrder: 'desc' as const
+  }
+};
+
+/**
  * Embedding configuration schema
  */
 export const EmbeddingConfigSchema = z.object({
@@ -65,8 +91,26 @@ export const DocumentModuleConfigSchema = z.object({
 export type DocumentModuleConfig = z.infer<typeof DocumentModuleConfigSchema>;
 
 /**
- * Validate and process configuration
+ * File module configuration schema
+ */
+export const FileModuleConfigSchema = z.object({
+  embedding: EmbeddingConfigSchema.optional(),
+  storage: z.any().optional(), // StorageProvider type
+  middleware: z.array(z.any()).optional() // PipelineMiddleware[] type
+});
+
+export type FileModuleConfig = z.infer<typeof FileModuleConfigSchema>;
+
+/**
+ * Validate and process document configuration
  */
 export function validateConfig(config: Partial<DocumentModuleConfig> = {}): DocumentModuleConfig {
   return DocumentModuleConfigSchema.parse(config);
-} 
+}
+
+/**
+ * Validate and process file configuration
+ */
+export function validateFileConfig(config: Partial<FileModuleConfig> = {}): FileModuleConfig {
+  return FileModuleConfigSchema.parse(config);
+}
