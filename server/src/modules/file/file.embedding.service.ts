@@ -107,24 +107,68 @@ export class EmbeddingService implements IEmbeddingService {
         await Promise.all(textEmbeddingInserts);
         console.log(`Inserted ${chunks.length} embeddings into ${TEXT_EMBEDDINGS_TABLE} for file ${file.id}`);
 
-        // If this is a collection file, also update the knowledge_metadata_index
-        if (file.collection_id) {
-          // Get collection details
-          const collection = await trx('collections')
-            .where('id', file.collection_id)
-            .first();
+      // Always update the knowledge_metadata_index for the file itself
+      try {
+        // Create embedding for file metadata
+        const fileText = `File: ${file.filename}. Content about: ${file.content.substring(0, 200)}...`;
+        const { embeddings: fileEmbeddings } = await embedMany({
+          model: openai.embedding('text-embedding-3-small'),
+          values: [fileText]
+        });
+        const fileEmbedding = fileEmbeddings[0];
 
-          if (collection) {
-            // Create embedding for collection metadata
-            const collectionText = `Collection: ${collection.name}. ${collection.description || ''}`;
-            const { embeddings: collectionEmbeddings } = await embedMany({
-              model: openai.embedding('text-embedding-3-small'),
-              values: [collectionText]
-            });
-            const collectionEmbedding = collectionEmbeddings[0];
+        // Log before knowledge_metadata_index operation
+        console.log(`Starting knowledge metadata index update for file ${file.id}`);
+        
+        // Upsert into knowledge_metadata_index for the file
+        const fileResult = await trx.raw(`
+          INSERT INTO ${KNOWLEDGE_METADATA_INDEX_TABLE}
+          (user_id, text_content, embedding, entity_type, entity_id, created_at, updated_at)
+          VALUES (?, ?, ?::vector, ?, ?, NOW(), NOW())
+          ON CONFLICT (entity_type, entity_id) 
+          DO UPDATE SET 
+            text_content = EXCLUDED.text_content,
+            embedding = EXCLUDED.embedding,
+            updated_at = NOW()
+          RETURNING id
+        `, [
+          file.user_id,
+          fileText,
+          JSON.stringify(fileEmbedding),
+          'file',
+          file.id
+        ]);
 
+        console.log(`Successfully updated knowledge metadata index for file ${file.id}`);
+        console.log(`Operation result:`, fileResult.rows[0]);
+      } catch (error) {
+        console.error(`Error updating knowledge metadata index for file ${file.id}:`, error);
+        // Don't throw here, continue with collection update if applicable
+      }
+
+      // If this is a collection file, also update the knowledge_metadata_index for the collection
+      if (file.collection_id) {
+        // Get collection details
+        const collection = await trx('collections')
+          .where('id', file.collection_id)
+          .first();
+
+        if (collection) {
+          // Create embedding for collection metadata
+          const collectionText = `Collection: ${collection.name}. ${collection.description || ''}`;
+          const { embeddings: collectionEmbeddings } = await embedMany({
+            model: openai.embedding('text-embedding-3-small'),
+            values: [collectionText]
+          });
+          const collectionEmbedding = collectionEmbeddings[0];
+
+          // Log before knowledge_metadata_index operation
+          console.log(`Starting knowledge metadata index update for collection ${collection.id}`);
+          console.log(`Table exists check: ${KNOWLEDGE_METADATA_INDEX_TABLE}`);
+          
+          try {
             // Upsert into knowledge_metadata_index
-            await trx.raw(`
+            const result = await trx.raw(`
               INSERT INTO ${KNOWLEDGE_METADATA_INDEX_TABLE}
               (user_id, text_content, embedding, entity_type, entity_id, created_at, updated_at)
               VALUES (?, ?, ?::vector, ?, ?, NOW(), NOW())
@@ -133,6 +177,7 @@ export class EmbeddingService implements IEmbeddingService {
                 text_content = EXCLUDED.text_content,
                 embedding = EXCLUDED.embedding,
                 updated_at = NOW()
+              RETURNING id
             `, [
               file.user_id,
               collectionText,
@@ -141,9 +186,14 @@ export class EmbeddingService implements IEmbeddingService {
               collection.id
             ]);
 
-            console.log(`Updated knowledge metadata index for collection ${collection.id}`);
+            console.log(`Successfully updated knowledge metadata index for collection ${collection.id}`);
+            console.log(`Operation result:`, result.rows[0]);
+          } catch (error) {
+            console.error(`Error updating knowledge metadata index for collection ${collection.id}:`, error);
+            throw error;
           }
         }
+      }
       });
 
       console.log(`Successfully processed and embedded file ${file.id}`);
@@ -165,6 +215,16 @@ export class EmbeddingService implements IEmbeddingService {
           .delete();
         
         console.log(`Deleted ${deleteResult} embeddings for file ${fileId}`);
+        
+        // Delete file entry from knowledge_metadata_index
+        const deleteMetadataResult = await trx(KNOWLEDGE_METADATA_INDEX_TABLE)
+          .where({
+            entity_type: 'file',
+            entity_id: fileId
+          })
+          .delete();
+        
+        console.log(`Deleted ${deleteMetadataResult} entries from knowledge metadata index for file ${fileId}`);
         
         // Check if we need to update knowledge_metadata_index
         const file = await trx('files').where('id', fileId).first();
@@ -196,5 +256,3 @@ export class EmbeddingService implements IEmbeddingService {
     }
   }
 }
-
-
