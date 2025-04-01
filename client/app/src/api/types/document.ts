@@ -1,4 +1,4 @@
-export interface Document {
+export interface VectraFile {
   id: string;
   filename: string;
   content: string;

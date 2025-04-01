@@ -5,16 +5,14 @@
   "scripts": {
     "test": "vitest",
     "dev": "node --env-file=.env --import @swc-node/register/esm-register --watch ./src/main.ts",
-    "build": "tsc",
-    "start": "node dist/main.js",
     "migrate:make": "node --env-file=.env --import @swc-node/register/esm-register ./node_modules/knex/bin/cli.js migrate:make",
     "migrate:latest": "node --env-file=.env --import @swc-node/register/esm-register ./node_modules/knex/bin/cli.js migrate:latest",
     "migrate:rollback": "node --env-file=.env --import @swc-node/register/esm-register ./node_modules/knex/bin/cli.js migrate:rollback",
     "migrate:down": "node --env-file=.env --import @swc-node/register/esm-register ./node_modules/knex/bin/cli.js migrate:down",
     "seed:make": "node --env-file=.env --import @swc-node/register/esm-register ./node_modules/knex/bin/cli.js seed:make",
     "seed:run": "node --env-file=.env --import @swc-node/register/esm-register ./node_modules/knex/bin/cli.js seed:run",
-    "db:setup": "npm run migrate:latest && npm run seed:run",
-    "db:reset": "npm run migrate:rollback && npm run migrate:latest && npm run seed:run"
+    "db:setup": "pnpm run migrate:latest && pnpm run seed:run",
+    "db:reset": "pnpm run migrate:rollback && pnpm run migrate:latest && pnpm run seed:run"
   },
   "dependencies": {
     "@ai-sdk/openai": "^1.2.5",
@@ -23,11 +21,6 @@
     "@mastra/pg": "^0.2.5",
     "@mastra/rag": "^0.1.13",
     "mastra": "^0.4.3",
-    "@types/express-session": "^1.18.1",
-    "@types/passport": "^1.0.17",
-    "@types/passport-github2": "^1.2.9",
-    "@types/passport-google-oauth20": "^2.0.16",
-    "@types/pg": "^8.11.11",
     "ai": "^4.1.61",
     "cors": "^2.8.5",
     "express": "^4.21.2",
@@ -53,6 +46,10 @@
     "@types/pg": "^8.11.11",
     "@types/supertest": "^6.0.2",
     "@types/uuid": "^10.0.0",
+    "@types/express-session": "^1.18.1",
+    "@types/passport": "^1.0.17",
+    "@types/passport-github2": "^1.2.9",
+    "@types/passport-google-oauth20": "^2.0.16",
     "supertest": "^7.0.0",
     "typescript": "^5.0.0",
     "vitest": "^3.0.6"

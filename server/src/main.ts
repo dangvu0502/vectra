@@ -40,7 +40,9 @@ initializeDatabase().then(() => {
     console.log('🚀 Server Status:');
     console.log(`- Running on port: ${PORT}`);
   console.log(`- Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`- Document API: http://localhost:${PORT}/api/v1/documents`);
-  console.log(`- Chat API: http://localhost:${PORT}/api/v1/chat`);
+  console.log(`- Document API: http://localhost:${PORT}/api/v1/files`);
+  console.log(`- Knowledge API: http://localhost:${PORT}/api/v1/knowledge/query`);
+  // Chat API temporarily disabled
+  // console.log(`- Chat API: http://localhost:${PORT}/api/v1/chat`);
 });
 }); // Add missing closing parenthesis and brace for .then()

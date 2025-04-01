@@ -1,0 +1,16 @@
+{
+  "name": "knowledge-module-tests",
+  "version": "1.0.0",
+  "description": "Tests for the knowledge module API endpoints",
+  "type": "module",
+  "main": "knowledge-module-test.js",
+  "scripts": {
+    "test": "node knowledge-module-test.js",
+    "test:knowledge": "node knowledge-module-test.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.3.1",
+    "form-data": "^4.0.2",
+    "node-fetch": "^3.3.2"
+  }
+}

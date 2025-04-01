@@ -1,9 +1,9 @@
-import { ApiResponse, Document } from '@/api/types';
+import { ApiResponse, VectraFile } from '@/api/types';
 import { apiClient } from '../core/client';
 import { API_CONFIG } from '../core/config';
 
 type QueryResponse = {
-  documents: Document[];
+  files: VectraFile[];
   pagination: {
     page: number;
     limit: number;
@@ -15,7 +15,7 @@ class DocumentsService {
   private baseUrl: string;
 
   constructor() {
-    this.baseUrl = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.DOCUMENTS}`;
+    this.baseUrl = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.FILES}`;
   }
 
   async upload(file: File): Promise<ApiResponse<Document>> {

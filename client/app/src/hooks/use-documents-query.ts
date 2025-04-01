@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { documentsService } from '@/api/services/documents';
-import type { Document } from '@/api/types';
+import { VectraFile } from '@/api/types';
 
 export const DOCUMENTS_QUERY_KEY = ['documents'] as const;
 
@@ -8,7 +8,7 @@ type QueryOptions = {
   query?: string;
   page?: number;
   limit?: number;
-  sortBy?: keyof Document;
+  sortBy?: keyof VectraFile;
   sortOrder?: 'asc' | 'desc';
 }
 
@@ -24,7 +24,7 @@ export function useDocumentsQuery(options: QueryOptions = {}) {
       sortBy,
       sortOrder
     }),
-    select: (response) => response.data || { documents: [], pagination: { page, limit, total: 0 } },
+    select: (response) => response.data || { files: [], pagination: { page, limit, total: 0 } },
   });
 }
 

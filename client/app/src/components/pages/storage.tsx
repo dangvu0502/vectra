@@ -45,10 +45,10 @@ export const StoragePage: FC = () => {
 
   const { uploadMutation, deleteMutation } = useDocumentMutations();
 
-  const documents = data?.documents || [];
+  const _files = data?.files || [];
   const pagination = data?.pagination || { page: 1, limit: 10, total: 0 };
 
-  const files = documents.map(doc => ({
+  const files = _files.map(doc => ({
     name: doc.filename,
     size: doc.size ? `${Math.round(doc.size / 1024)} KB` : '65 KB',
     date: new Date(doc.createdAt).toLocaleString(),
@@ -57,13 +57,13 @@ export const StoragePage: FC = () => {
   }));
 
  const fileDetails = Object.fromEntries(
-    documents.map(doc => [
+    files.map(doc => [
       doc.id, // Use doc.id as the key
       {
-        name: doc.filename,
+        name: doc.name,
         id: doc.id,
-        size: doc.size ? `${Math.round(doc.size / 1024)} KB` : '65 KB', // Use dynamic size
-        createdAt: new Date(doc.createdAt).toLocaleString(),
+        size: doc.size ? `${Math.round(parseFloat(doc.size) / 1024)} KB` : '65 KB', // Use dynamic size
+        createdAt: new Date(doc.date).toLocaleString(),
         status: 'ready' as 'ready' | 'processing' | 'error',
         vectorStores: [] // This will be populated with actual vector store data
       }

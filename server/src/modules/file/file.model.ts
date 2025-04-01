@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-// Document Schema for validation
-export const documentSchema = z.object({
+// File Schema for validation
+export const fileSchema = z.object({
   id: z.string().uuid(),
   filename: z.string().min(1),
   path: z.string().min(1),
@@ -48,7 +48,7 @@ export const documentSchema = z.object({
   }, z.date())
 }).strict();
 
-export type Document = z.infer<typeof documentSchema>;
+export type File = z.infer<typeof fileSchema>;
 
 // Query options schema
 export const querySchema = z.object({
@@ -62,4 +62,4 @@ export const querySchema = z.object({
 export type QueryOptions = z.infer<typeof querySchema>;
 
 // Database table name
-export const DOCUMENTS_TABLE = 'files';
+export const FILES_TABLE = 'files';
