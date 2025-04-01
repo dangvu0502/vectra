@@ -1,81 +1,62 @@
 import { MDocument } from '@mastra/rag';
 import { embedMany } from 'ai';
-// Use typeof to get the specific type of the imported embeddingModel instance
-import { embeddingModel, mastra } from '@/modules/mastra'; // Using path alias again & Import centralized instances
-// Remove import from ./types
-import type { File as DbFileType } from './file.model'; // Import the Zod-derived type
-import type { PgVector } from '@mastra/pg';
+import { openai } from '@ai-sdk/openai';
+import type { Knex } from 'knex';
+import type { File as DbFileType } from './file.model';
 
-// Default chunking options (can be overridden if needed)
+// Default chunking options
 const DEFAULT_CHUNK_SIZE = 1000;
 const DEFAULT_OVERLAP_SIZE = 200;
-const VECTOR_INDEX_NAME = 'text_embeddings'; // Updated table name
+const TEXT_EMBEDDINGS_TABLE = 'text_embeddings';
+const KNOWLEDGE_METADATA_INDEX_TABLE = 'knowledge_metadata_index';
 
 // Interface defining the service's responsibilities
 export interface IEmbeddingService {
-  processFile(file: DbFileType): Promise<void>; // Use DbFileType from model
+  processFile(file: DbFileType): Promise<void>;
   deleteFileEmbeddings(fileId: string): Promise<void>;
-} // Corrected closing brace if it was missing
+}
 
-// Implementation using centralized Mastra components
 export class EmbeddingService implements IEmbeddingService {
-  private static instance: EmbeddingService | null = null; // Keep static instance
-
-  // Use injected/imported centralized instances
-  private readonly _embeddingModel: typeof embeddingModel; // Use specific type
-  private readonly vectorStore: PgVector; // Use specific type
+  private static instance: EmbeddingService | null = null;
+  private readonly db: Knex;
   private readonly options: { chunkSize: number; overlapSize: number };
 
-  // Constructor now takes centralized instances with specific types
-  private constructor( // Keep constructor private
-    embeddingModelInstance: typeof embeddingModel,
-    vectorStoreInstance: PgVector,
+  private constructor(
+    db: Knex,
     options: { chunkSize?: number; overlapSize?: number } = {}
   ) {
-    this._embeddingModel = embeddingModelInstance;
-    this.vectorStore = vectorStoreInstance;
+    this.db = db;
     this.options = {
       chunkSize: options.chunkSize || DEFAULT_CHUNK_SIZE,
       overlapSize: options.overlapSize || DEFAULT_OVERLAP_SIZE,
     };
   }
 
-  // Keep static getInstance method
   static getInstance(
-    embeddingModelInstance: typeof embeddingModel,
-    vectorStoreInstance: PgVector,
+    db: Knex,
     options: { chunkSize?: number; overlapSize?: number } = {}
   ): EmbeddingService {
     if (!EmbeddingService.instance) {
-      EmbeddingService.instance = new EmbeddingService(
-        embeddingModelInstance,
-        vectorStoreInstance,
-        options
-      );
+      EmbeddingService.instance = new EmbeddingService(db, options);
     }
     return EmbeddingService.instance;
   }
 
-  // Keep static resetInstance method (optional but common with singletons)
   static resetInstance(): void {
     EmbeddingService.instance = null;
   }
 
-
-  async processFile(file: DbFileType): Promise<void> { // Use DbFileType
+  async processFile(file: DbFileType): Promise<void> {
     console.log(`Processing file for embedding: ${file.id} (${file.filename})`);
     try {
-      const metadata = {
-        user_id: file.user_id,
-        collection_id: file.collection_id,
-        file_id: file.id, // Crucial for filtering
-        filename: file.filename,
-        created_at: file.created_at.toISOString(), // Use created_at from DbFileType
-        ...(file.metadata || {}), // Spread existing metadata if it exists
-      };
-
+      // Create document and chunk it using MDocument from @mastra/rag
       const doc = MDocument.fromText(file.content, {
-        ...metadata, 
+        user_id: file.user_id,
+        file_id: file.id,
+        collection_id: file.collection_id,
+        filename: file.filename,
+        created_at: file.created_at.toISOString(),
+        ...(file.metadata || {}),
         chunkSize: this.options.chunkSize,
         overlapSize: this.options.overlapSize,
       });
@@ -87,78 +68,127 @@ export class EmbeddingService implements IEmbeddingService {
       }
       console.log(`Generated ${chunks.length} chunks for file ${file.id}`);
 
+      // Generate embeddings using embedMany from 'ai'
+      const texts = chunks.map(chunk => chunk.text);
       const { embeddings } = await embedMany({
-        values: chunks.map(chunk => chunk.text),
-        model: this._embeddingModel,
+        model: openai.embedding('text-embedding-3-small'),
+        values: texts
       });
 
       if (!embeddings || embeddings.length !== chunks.length) {
         throw new Error(`Mismatch between chunks (${chunks.length}) and embeddings (${embeddings?.length || 0}) count.`);
       }
 
-      // Prepare data for PgVector upsert
-      const vectorIds = chunks.map((_, i) => `${file.id}_chunk_${i}`); // Generate IDs matching 'vector_id' column
-      const vectorEmbeddings = embeddings; // Raw number[][]
-      const vectorMetadata = chunks.map((chunk, i) => ({
-          ...(chunk.metadata || {}),
-          chunk_index: i,
-          chunk_text: chunk.text, // Store chunk text in metadata for retrieval
-      }));
+      // Begin transaction for database operations
+      await this.db.transaction(async (trx) => {
+        // Insert embeddings into text_embeddings table
+        const textEmbeddingInserts = chunks.map((chunk, i) => {
+          const vectorId = `${file.id}_chunk_${i}`;
+          const additionalMetadata = {
+            chunk_index: i,
+            chunk_text: chunk.text,
+            ...(chunk.metadata || {})
+          };
 
-      const upsertPayload = {
-        indexName: VECTOR_INDEX_NAME,
-        vectors: vectorEmbeddings,
-        ids: vectorIds,
-        metadata: vectorMetadata,
-      };
+          return trx.raw(`
+            INSERT INTO ${TEXT_EMBEDDINGS_TABLE} 
+            (vector_id, user_id, file_id, collection_id, embedding, metadata, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?::vector, ?, NOW(), NOW())
+          `, [
+            vectorId,
+            file.user_id,
+            file.id,
+            file.collection_id,
+            JSON.stringify(embeddings[i]),
+            JSON.stringify(additionalMetadata)
+          ]);
+        });
 
-      console.log(`Upserting ${vectorEmbeddings.length} vectors into index '${VECTOR_INDEX_NAME}' for file ${file.id}`);
-      // Log the payload structure (omitting potentially large vectors for brevity)
-      console.log(`Upsert Payload (excluding vectors):`, JSON.stringify({ ...upsertPayload, vectors: `[${vectorEmbeddings.length} vectors]` }, null, 2));
+        await Promise.all(textEmbeddingInserts);
+        console.log(`Inserted ${chunks.length} embeddings into ${TEXT_EMBEDDINGS_TABLE} for file ${file.id}`);
 
-      try {
-        // Upsert into PgVector - Pass vectors, ids, and metadata arrays. Specify the correct index name.
-        const upsertResult = await this.vectorStore.upsert(upsertPayload);
+        // If this is a collection file, also update the knowledge_metadata_index
+        if (file.collection_id) {
+          // Get collection details
+          const collection = await trx('collections')
+            .where('id', file.collection_id)
+            .first();
 
-        // Log the result from the upsert operation, if any
-        console.log(`Upsert operation result for file ${file.id}:`, upsertResult);
+          if (collection) {
+            // Create embedding for collection metadata
+            const collectionText = `Collection: ${collection.name}. ${collection.description || ''}`;
+            const { embeddings: collectionEmbeddings } = await embedMany({
+              model: openai.embedding('text-embedding-3-small'),
+              values: [collectionText]
+            });
+            const collectionEmbedding = collectionEmbeddings[0];
 
-        // Only log success if no error was thrown and potentially if result indicates success
-        console.log(`Successfully processed and embedded file ${file.id}`);
-      } catch (upsertError) {
-        // Catch specific errors from the upsert call
-        console.error(`Error during vectorStore.upsert for file ${file.id}:`, upsertError);
-        // Re-throw to ensure the overall process fails
-        throw upsertError;
-      }
+            // Upsert into knowledge_metadata_index
+            await trx.raw(`
+              INSERT INTO ${KNOWLEDGE_METADATA_INDEX_TABLE}
+              (user_id, text_content, embedding, entity_type, entity_id, created_at, updated_at)
+              VALUES (?, ?, ?::vector, ?, ?, NOW(), NOW())
+              ON CONFLICT (entity_type, entity_id) 
+              DO UPDATE SET 
+                text_content = EXCLUDED.text_content,
+                embedding = EXCLUDED.embedding,
+                updated_at = NOW()
+            `, [
+              file.user_id,
+              collectionText,
+              JSON.stringify(collectionEmbedding),
+              'collection',
+              collection.id
+            ]);
 
+            console.log(`Updated knowledge metadata index for collection ${collection.id}`);
+          }
+        }
+      });
+
+      console.log(`Successfully processed and embedded file ${file.id}`);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error(`Error processing file ${file.id}: ${errorMessage}`);
-      // Re-throw the error or handle it (e.g., update document metadata with error state)
       throw new Error(`Failed to process file ${file.id}: ${errorMessage}`);
     }
   }
 
-  // Removed search methods - handled by Mastra RAG tools
-
   async deleteFileEmbeddings(fileId: string): Promise<void> {
     try {
-      // Use the correct index name here as well
-      console.log(`Attempting to delete embeddings for file ${fileId} from index '${VECTOR_INDEX_NAME}'`);
-
-      // Confirmed limitation: @mastra/pg PgVector might not support deletion by metadata filter directly.
-      // Deletion might require fetching vector IDs first based on the filter, then deleting by ID.
-      // This functionality is currently skipped pending clarification or updates in the library.
-      /*
-      const deleteResult = await this.vectorStore.delete({ // Method and filter syntax need verification
-          indexName: VECTOR_INDEX_NAME,
-          filter: { 'file_id': fileId } // Example filter, needs verification
+      console.log(`Deleting embeddings for file ${fileId}`);
+      
+      await this.db.transaction(async (trx) => {
+        // Delete from text_embeddings
+        const deleteResult = await trx(TEXT_EMBEDDINGS_TABLE)
+          .where('file_id', fileId)
+          .delete();
+        
+        console.log(`Deleted ${deleteResult} embeddings for file ${fileId}`);
+        
+        // Check if we need to update knowledge_metadata_index
+        const file = await trx('files').where('id', fileId).first();
+        if (file && file.collection_id) {
+          // Check if this was the last file in the collection
+          const remainingFiles = await trx('files')
+            .where('collection_id', file.collection_id)
+            .whereNot('id', fileId)
+            .count('id as count')
+            .first();
+          
+          // If no files left in collection, remove from knowledge_metadata_index
+          if (remainingFiles && Number(remainingFiles.count) === 0) {
+            await trx(KNOWLEDGE_METADATA_INDEX_TABLE)
+              .where({
+                entity_type: 'collection',
+                entity_id: file.collection_id
+              })
+              .delete();
+            
+            console.log(`Removed collection ${file.collection_id} from knowledge metadata index`);
+          }
+        }
       });
-      console.log(`Deletion result for file ${fileId}:`, deleteResult);
-      */
-      console.warn(`Vector deletion by metadata filter for file ${fileId} is currently skipped due to library limitations.`);
-
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error(`Error deleting embeddings for file ${fileId}: ${errorMessage}`);
@@ -167,5 +197,4 @@ export class EmbeddingService implements IEmbeddingService {
   }
 }
 
-// Keep instance export
-export const embeddingService = EmbeddingService.getInstance(embeddingModel, mastra.getVector("pgvector"));
+

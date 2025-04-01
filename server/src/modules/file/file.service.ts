@@ -8,7 +8,8 @@ import type { File as DbFileType, QueryOptions } from './file.model';
 import { db } from '@/database/connection'; // Import db instance
 import { FileNotFoundError } from '@/modules/core/errors'; // Import error type
 import { FILES_TABLE, fileSchema, querySchema } from './file.model';
-import { embeddingService, type IEmbeddingService } from './file.embedding.service'; // Import EmbeddingService interface AND INSTANCE
+// Update the import to only import the types/class
+import { EmbeddingService, type IEmbeddingService } from './file.embedding.service';
 
 // Interface using DbFileType and QueryOptions from model.ts
 export interface IFileService {
@@ -248,4 +249,7 @@ class FileService implements IFileService { // Keep class definition
 }
 
 // Keep instance export
+// Create the embeddingService instance here instead
+const embeddingService = EmbeddingService.getInstance(db);
+
 export const fileService = FileService.getInstance(db, embeddingService);
