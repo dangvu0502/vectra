@@ -27,8 +27,6 @@ export const UserAvatar: FC<UserAvatarProps> = ({
   className,
 }) => {
   const hasAvatar = !!user?.profilePictureUrl;
-  console.log("🚀 ~ hasAvatar:", hasAvatar);
-  console.log("🚀 ~ user:", user);
 
   return (
     <div

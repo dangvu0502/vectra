@@ -6,6 +6,9 @@ const VECTOR_DIMENSION = 1536;
 export const text_embeddings_schema = {
   up: async function up(knex: Knex): Promise<void> {
     return knex.transaction(async (trx) => {
+      // Ensure pgvector extension is installed
+      await knex.raw(`CREATE EXTENSION IF NOT EXISTS vector;`);
+      
       // Verify dependent tables exist
       const hasUsers = await trx.schema.hasTable('users');
       const hasFiles = await trx.schema.hasTable('files');
