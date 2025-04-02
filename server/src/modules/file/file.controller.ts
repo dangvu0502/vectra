@@ -37,6 +37,10 @@ class FileController { // Keep class definition
         return void res.status(400).json({ message: 'No file uploaded' });
       }
 
+      switch (req.file.mimetype) {
+        
+      }
+
       const content = await fs.readFile(req.file.path, 'utf-8');
       // Service method now returns validated DbFileType
       const file: DbFileType = await this.fileService.upload({

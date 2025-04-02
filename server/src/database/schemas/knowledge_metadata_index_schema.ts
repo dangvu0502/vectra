@@ -23,7 +23,8 @@ export const knowledge_metadata_index_schema = {
         
         // Indexes
         table.index('user_id');
-        table.index(['entity_type', 'entity_id']);
+        // Add explicit UNIQUE constraint
+        table.unique(['user_id', 'entity_type', 'entity_id']); 
       });
 
       // Create HNSW index for vector similarity search
