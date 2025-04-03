@@ -10,8 +10,6 @@ import { createEmbeddingQueryRunner } from './file.embedding.queries';
 // Default chunking options
 const DEFAULT_CHUNK_SIZE = 1000;
 const DEFAULT_OVERLAP_SIZE = 200;
-const TEXT_EMBEDDINGS_TABLE = 'text_embeddings';
-const KNOWLEDGE_METADATA_INDEX_TABLE = 'knowledge_metadata_index';
 
 // Interface defining the service's responsibilities
 export interface IEmbeddingService {
