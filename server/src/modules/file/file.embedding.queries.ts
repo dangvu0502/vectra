@@ -1,6 +1,6 @@
 import { db } from '@/database/connection'; // Keep db import for default runner
 import type { Knex } from 'knex';
-import type { File as DbFileType } from './file.model'; // Import File type
+import type { File as DbFileType } from './file.schema'; // Import File type
 import { FILES_TABLE, TEXT_EMBEDDINGS_TABLE, KNOWLEDGE_METADATA_INDEX_TABLE, COLLECTIONS_TABLE } from '@/config/constants';
 
 // Removed local constant declarations

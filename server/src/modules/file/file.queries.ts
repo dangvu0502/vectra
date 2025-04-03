@@ -1,7 +1,8 @@
 import { db } from '@/database/connection';
 import type { Knex } from 'knex';
-import type { File as DbFileType, QueryOptions } from './file.model'; // Keep using types from model
-import { FILES_TABLE, fileSchema, querySchema } from './file.model'; // Import necessary constants/schemas
+import type { File as DbFileType, QueryOptions } from './file.schema'; // Keep using types from model
+import { fileSchema, querySchema } from './file.schema'; // Import necessary schemas
+import { FILES_TABLE } from '@/config/constants'; // Import table constant
 
 /**
  * Inserts a new file record into the database.

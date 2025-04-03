@@ -6,7 +6,7 @@ import { DocumentNotFoundError as FileNotFoundError } from '@/modules/core/error
 import type { IFileService } from './file.service';
 import { fileService } from './file.service';
 // Import Zod schemas and derived types from model.ts
-import { fileSchema, querySchema, type File as DbFileType } from './file.model';
+import { fileSchema, querySchema, type File as DbFileType } from './file.schema';
 import { v4 as uuidv4 } from 'uuid';
 import { TEST_USER_ID } from '@/database/constants';
 

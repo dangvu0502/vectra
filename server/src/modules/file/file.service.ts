@@ -6,7 +6,7 @@ import { FileConfig } from '../core/config'; // Assuming this config is still re
 // Keep QueryOptions import from model.ts, rename DbFileType for clarity if desired, or keep as is.
 import { db } from '@/database/connection'; // Keep db instance import (might be needed elsewhere or for passing)
 import { FileNotFoundError } from '@/modules/core/errors'; // Import error type
-import { querySchema, type File as DbFileType, type QueryOptions } from './file.model';
+import { querySchema, type File as DbFileType, type QueryOptions } from './file.schema';
 // Update the import to only import the types/class
 import { EmbeddingService, type IEmbeddingService } from './file.embedding.service';
 import {

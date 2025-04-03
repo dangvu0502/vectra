@@ -1,6 +1,6 @@
 import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
-import { findUserByProvider, createUser, findUserById } from './auth.model';
+import { findUserByProvider, createUser, findUserById } from './auth.service';
 import type { UserProfile } from './auth.types';
 import { env } from '@/config/environment'; // Assuming env config is here
 

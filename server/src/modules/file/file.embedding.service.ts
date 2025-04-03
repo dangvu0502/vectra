@@ -3,7 +3,7 @@ import { embedMany } from 'ai';
 import { openai } from '@ai-sdk/openai';
 // Removed duplicate imports
 import type { Knex } from 'knex';
-import type { File as DbFileType } from './file.model';
+import type { File as DbFileType } from './file.schema';
 // Import the query runner factory
 import { createEmbeddingQueryRunner } from './file.embedding.queries';
 
