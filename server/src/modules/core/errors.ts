@@ -26,6 +26,29 @@ export class DocumentProcessingError extends DocumentError {
   }
 }
 
+// Collection-related errors
+export class CollectionError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CollectionError';
+  }
+}
+
+export class CollectionNotFoundError extends CollectionError {
+  constructor(idOrName: string) {
+    super(`Collection with identifier ${idOrName} not found`);
+    this.name = 'CollectionNotFoundError';
+  }
+}
+
+export class CollectionConflictError extends CollectionError {
+  constructor(name: string) {
+    super(`A collection with the name "${name}" already exists.`);
+    this.name = 'CollectionConflictError';
+  }
+}
+
+
 // File-related errors
 export class FileError extends Error {
   constructor(message: string) {
