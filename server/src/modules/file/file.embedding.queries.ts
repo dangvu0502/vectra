@@ -1,3 +1,4 @@
+import { db } from '@/database/connection'; // Keep db import for default runner
 import type { Knex } from 'knex';
 import type { File as DbFileType } from './file.model'; // Import File type
 
@@ -14,8 +15,8 @@ const FILES_TABLE = 'files'; // Needed for the check in delete
  * @param chunks - Array of text chunks.
  * @param embeddings - Array of corresponding embeddings.
  */
-export const insertTextEmbeddingsQuery = async (
-  trx: Knex.Transaction,
+const _insertTextEmbeddingsQuery = async ( // Make internal
+  dbOrTrx: Knex | Knex.Transaction, // Accept db or trx
   file: DbFileType,
   chunks: { text: string; metadata?: Record<string, any> }[],
   embeddings: number[][]
@@ -28,8 +29,8 @@ export const insertTextEmbeddingsQuery = async (
       ...(chunk.metadata || {})
     };
 
-    // Use Knex's raw query builder within the transaction
-    return trx.raw(`
+    // Use the provided db or trx instance
+    return dbOrTrx.raw(`
       INSERT INTO ${TEXT_EMBEDDINGS_TABLE}
       (vector_id, user_id, file_id, collection_id, embedding, metadata, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?::vector, ?, NOW(), NOW())
@@ -54,8 +55,8 @@ export const insertTextEmbeddingsQuery = async (
  * @param textContent - The text content for the index.
  * @param embedding - The embedding vector.
  */
-export const upsertFileKnowledgeIndexQuery = async (
-  trx: Knex.Transaction,
+const _upsertFileKnowledgeIndexQuery = async ( // Make internal
+  dbOrTrx: Knex | Knex.Transaction, // Accept db or trx
   userId: string,
   fileId: string,
   textContent: string,
@@ -78,7 +79,7 @@ export const upsertFileKnowledgeIndexQuery = async (
     'file',
     fileId
   ];
-  await trx.raw(upsertQuery, params);
+  await dbOrTrx.raw(upsertQuery, params); // Use dbOrTrx
 };
 
 /**
@@ -87,11 +88,13 @@ export const upsertFileKnowledgeIndexQuery = async (
  * @param collectionId - The collection ID.
  * @returns The collection object or undefined.
  */
-export const findCollectionByIdQuery = async (
-  trx: Knex.Transaction,
+// Note: This one might still be useful outside a transaction, so keep export?
+// Or make internal and expose via runner only? Let's make internal for consistency.
+const _findCollectionByIdQuery = async ( // Make internal
+  dbOrTrx: Knex | Knex.Transaction, // Accept db or trx
   collectionId: string
 ): Promise<{ id: string; name: string; description?: string } | undefined> => {
-  return trx(COLLECTIONS_TABLE)
+  return dbOrTrx(COLLECTIONS_TABLE) // Use dbOrTrx
     .where('id', collectionId)
     .first();
 };
@@ -105,8 +108,8 @@ export const findCollectionByIdQuery = async (
  * @param textContent - The text content for the index.
  * @param embedding - The embedding vector.
  */
-export const upsertCollectionKnowledgeIndexQuery = async (
-  trx: Knex.Transaction,
+const _upsertCollectionKnowledgeIndexQuery = async ( // Make internal
+  dbOrTrx: Knex | Knex.Transaction, // Accept db or trx
   userId: string,
   collectionId: string,
   textContent: string,
@@ -129,7 +132,7 @@ export const upsertCollectionKnowledgeIndexQuery = async (
     'collection',
     collectionId
   ];
-  await trx.raw(upsertQuery, params);
+  await dbOrTrx.raw(upsertQuery, params); // Use dbOrTrx
 };
 
 
@@ -138,11 +141,11 @@ export const upsertCollectionKnowledgeIndexQuery = async (
  * @param trx - Knex transaction object.
  * @param fileId - The file ID.
  */
-export const deleteTextEmbeddingsByFileIdQuery = async (
-  trx: Knex.Transaction,
+const _deleteTextEmbeddingsByFileIdQuery = async ( // Make internal
+  dbOrTrx: Knex | Knex.Transaction, // Accept db or trx
   fileId: string
 ): Promise<void> => {
-  await trx(TEXT_EMBEDDINGS_TABLE)
+  await dbOrTrx(TEXT_EMBEDDINGS_TABLE) // Use dbOrTrx
     .where('file_id', fileId)
     .delete();
 };
@@ -152,11 +155,11 @@ export const deleteTextEmbeddingsByFileIdQuery = async (
  * @param trx - Knex transaction object.
  * @param fileId - The file ID.
  */
-export const deleteFileKnowledgeIndexQuery = async (
-  trx: Knex.Transaction,
+const _deleteFileKnowledgeIndexQuery = async ( // Make internal
+  dbOrTrx: Knex | Knex.Transaction, // Accept db or trx
   fileId: string
 ): Promise<void> => {
-  await trx(KNOWLEDGE_METADATA_INDEX_TABLE)
+  await dbOrTrx(KNOWLEDGE_METADATA_INDEX_TABLE) // Use dbOrTrx
     .where({
       entity_type: 'file',
       entity_id: fileId
@@ -171,11 +174,11 @@ export const deleteFileKnowledgeIndexQuery = async (
  * @param fileId - The file ID.
  * @returns The file object with id and collection_id, or undefined.
  */
-export const findFileForDeleteCheckQuery = async (
-  trx: Knex.Transaction,
+const _findFileForDeleteCheckQuery = async ( // Make internal
+  dbOrTrx: Knex | Knex.Transaction, // Accept db or trx
   fileId: string
 ): Promise<{ id: string; collection_id: string | null } | undefined> => {
-  return trx(FILES_TABLE)
+  return dbOrTrx(FILES_TABLE) // Use dbOrTrx
     .select('id', 'collection_id')
     .where('id', fileId)
     .first();
@@ -188,12 +191,12 @@ export const findFileForDeleteCheckQuery = async (
  * @param excludeFileId - The file ID to exclude from the count.
  * @returns The count of remaining files.
  */
-export const countRemainingFilesInCollectionQuery = async (
-  trx: Knex.Transaction,
+const _countRemainingFilesInCollectionQuery = async ( // Make internal
+  dbOrTrx: Knex | Knex.Transaction, // Accept db or trx
   collectionId: string,
   excludeFileId: string
 ): Promise<number> => {
-  const result = await trx(FILES_TABLE)
+  const result = await dbOrTrx(FILES_TABLE) // Use dbOrTrx
     .where('collection_id', collectionId)
     .whereNot('id', excludeFileId)
     .count('id as count')
@@ -206,14 +209,76 @@ export const countRemainingFilesInCollectionQuery = async (
  * @param trx - Knex transaction object.
  * @param collectionId - The collection ID.
  */
-export const deleteCollectionKnowledgeIndexQuery = async (
-  trx: Knex.Transaction,
+const _deleteCollectionKnowledgeIndexQuery = async ( // Make internal
+  dbOrTrx: Knex | Knex.Transaction, // Accept db or trx
   collectionId: string
 ): Promise<void> => {
-  await trx(KNOWLEDGE_METADATA_INDEX_TABLE)
+  await dbOrTrx(KNOWLEDGE_METADATA_INDEX_TABLE) // Use dbOrTrx
     .where({
       entity_type: 'collection',
       entity_id: collectionId
     })
     .delete();
 };
+
+
+// --- Query Runner ---
+
+/**
+ * Creates a query runner instance bound to a specific Knex connection or transaction.
+ * @param dbOrTrx - The Knex instance or transaction object.
+ * @returns An object with methods to execute embedding-related queries.
+ */
+export const createEmbeddingQueryRunner = (dbOrTrx: Knex | Knex.Transaction) => {
+  return {
+    insertTextEmbeddings: (
+      file: DbFileType,
+      chunks: { text: string; metadata?: Record<string, any> }[],
+      embeddings: number[][]
+    ) => _insertTextEmbeddingsQuery(dbOrTrx, file, chunks, embeddings),
+
+    upsertFileKnowledgeIndex: (
+      userId: string,
+      fileId: string,
+      textContent: string,
+      embedding: number[]
+    ) => _upsertFileKnowledgeIndexQuery(dbOrTrx, userId, fileId, textContent, embedding),
+
+    findCollectionById: (
+      collectionId: string
+    ) => _findCollectionByIdQuery(dbOrTrx, collectionId),
+
+    upsertCollectionKnowledgeIndex: (
+      userId: string,
+      collectionId: string,
+      textContent: string,
+      embedding: number[]
+    ) => _upsertCollectionKnowledgeIndexQuery(dbOrTrx, userId, collectionId, textContent, embedding),
+
+    deleteTextEmbeddingsByFileId: (
+      fileId: string
+    ) => _deleteTextEmbeddingsByFileIdQuery(dbOrTrx, fileId),
+
+    deleteFileKnowledgeIndex: (
+      fileId: string
+    ) => _deleteFileKnowledgeIndexQuery(dbOrTrx, fileId),
+
+    findFileForDeleteCheck: (
+      fileId: string
+    ) => _findFileForDeleteCheckQuery(dbOrTrx, fileId),
+
+    countRemainingFilesInCollection: (
+      collectionId: string,
+      excludeFileId: string
+    ) => _countRemainingFilesInCollectionQuery(dbOrTrx, collectionId, excludeFileId),
+
+    deleteCollectionKnowledgeIndex: (
+      collectionId: string
+    ) => _deleteCollectionKnowledgeIndexQuery(dbOrTrx, collectionId),
+  };
+};
+
+// Optional: Export a default runner using the main db connection if needed elsewhere
+// export const defaultEmbeddingQueryRunner = createEmbeddingQueryRunner(db);
+
+// Removed redundant transactionalEmbeddingQueries export

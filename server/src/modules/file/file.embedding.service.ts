@@ -1,19 +1,11 @@
 import { MDocument } from '@mastra/rag';
 import { embedMany } from 'ai';
 import { openai } from '@ai-sdk/openai';
+// Removed duplicate imports
 import type { Knex } from 'knex';
 import type { File as DbFileType } from './file.model';
-import {
-  insertTextEmbeddingsQuery,
-  upsertFileKnowledgeIndexQuery,
-  findCollectionByIdQuery,
-  upsertCollectionKnowledgeIndexQuery,
-  deleteTextEmbeddingsByFileIdQuery,
-  deleteFileKnowledgeIndexQuery,
-  findFileForDeleteCheckQuery,
-  countRemainingFilesInCollectionQuery,
-  deleteCollectionKnowledgeIndexQuery,
-} from './file.embedding.queries'; // Import query functions
+// Import the query runner factory
+import { createEmbeddingQueryRunner } from './file.embedding.queries';
 
 // Default chunking options
 const DEFAULT_CHUNK_SIZE = 1000;
@@ -92,8 +84,11 @@ export class EmbeddingService implements IEmbeddingService {
 
       // Begin transaction for database operations
       await this.db.transaction(async (trx) => {
-        // Insert embeddings using the query function
-        await insertTextEmbeddingsQuery(trx, file, chunks, embeddings);
+        // Create a query runner scoped to this transaction
+        const txRunner = createEmbeddingQueryRunner(trx);
+
+        // Insert embeddings using the transaction runner
+        await txRunner.insertTextEmbeddings(file, chunks, embeddings);
         // console.log(`Inserted ${chunks.length} embeddings into ${TEXT_EMBEDDINGS_TABLE} for file ${file.id}`);
 
       // Always update the knowledge_metadata_index for the file itself
@@ -109,8 +104,8 @@ export class EmbeddingService implements IEmbeddingService {
         });
         const fileEmbedding = fileEmbeddings[0];
 
-        // Upsert file knowledge index using the query function
-        await upsertFileKnowledgeIndexQuery(trx, file.user_id, file.id, fileText, fileEmbedding);
+        // Upsert file knowledge index using the transaction runner
+        await txRunner.upsertFileKnowledgeIndex(file.user_id, file.id, fileText, fileEmbedding);
         // console.log(`[EmbeddingService] Successfully updated knowledge metadata index for file ${file.id}`);
       } catch (error) {
         console.error(`[EmbeddingService] Error updating knowledge metadata index for file ${file.id}:`, error);
@@ -118,8 +113,8 @@ export class EmbeddingService implements IEmbeddingService {
 
       // If this is a collection file, also update the knowledge_metadata_index for the collection
       if (file.collection_id) {
-        // Find collection using the query function
-        const collection = await findCollectionByIdQuery(trx, file.collection_id);
+        // Find collection using the transaction runner
+        const collection = await txRunner.findCollectionById(file.collection_id);
 
         if (collection) {
           const collectionText = `Collection: ${collection.name}. ${collection.description || ''}`;
@@ -130,8 +125,8 @@ export class EmbeddingService implements IEmbeddingService {
           const collectionEmbedding = collectionEmbeddings[0];
 
           try {
-            // Upsert collection knowledge index using the query function
-            await upsertCollectionKnowledgeIndexQuery(trx, file.user_id, collection.id, collectionText, collectionEmbedding);
+            // Upsert collection knowledge index using the transaction runner
+            await txRunner.upsertCollectionKnowledgeIndex(file.user_id, collection.id, collectionText, collectionEmbedding);
             // console.log(`[EmbeddingService] Successfully updated knowledge metadata index for collection ${collection.id}`);
           } catch (error) {
             console.error(`[EmbeddingService] Error updating knowledge metadata index for collection ${collection.id}:`, error);
@@ -154,22 +149,25 @@ export class EmbeddingService implements IEmbeddingService {
       // console.log(`Deleting embeddings for file ${fileId}`);
       
       await this.db.transaction(async (trx) => {
-        // Delete text embeddings using the query function
-        await deleteTextEmbeddingsByFileIdQuery(trx, fileId);
+        // Create a query runner scoped to this transaction
+        const txRunner = createEmbeddingQueryRunner(trx);
 
-        // Delete file knowledge index using the query function
-        await deleteFileKnowledgeIndexQuery(trx, fileId);
+        // Delete text embeddings using the transaction runner
+        await txRunner.deleteTextEmbeddingsByFileId(fileId);
+
+        // Delete file knowledge index using the transaction runner
+        await txRunner.deleteFileKnowledgeIndex(fileId);
 
         // Check if we need to update knowledge_metadata_index for the collection
-        // Find file using the query function
-        const file = await findFileForDeleteCheckQuery(trx, fileId);
+        // Find file using the transaction runner
+        const file = await txRunner.findFileForDeleteCheck(fileId);
         if (file && file.collection_id) {
-          // Count remaining files using the query function
-          const remainingFilesCount = await countRemainingFilesInCollectionQuery(trx, file.collection_id, fileId);
+          // Count remaining files using the transaction runner
+          const remainingFilesCount = await txRunner.countRemainingFilesInCollection(file.collection_id, fileId);
 
           if (remainingFilesCount === 0) {
-            // Delete collection knowledge index using the query function
-            await deleteCollectionKnowledgeIndexQuery(trx, file.collection_id);
+            // Delete collection knowledge index using the transaction runner
+            await txRunner.deleteCollectionKnowledgeIndex(file.collection_id);
             // console.log(`Removed collection ${file.collection_id} from knowledge metadata index`);
           }
         }
