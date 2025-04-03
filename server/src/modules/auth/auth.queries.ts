@@ -1,11 +1,7 @@
-// Removed unused imports: import { db } from '@/database/connection';
-// Removed unused imports: import { v4 as uuidv4 } from 'uuid';
-import type { UserProfile } from './auth.types'; // Import the type
-import {
-  findUserByProviderQuery,
-  createUserQuery,
-  findUserByIdQuery,
-} from './auth.queries'; // Import query functions
+import { db } from '@/database/connection';
+// Removed incorrect import: import { USERS_TABLE } from '@/database/constants';
+import { v4 as uuidv4 } from 'uuid';
+import type { UserProfile } from './auth.types';
 
 /**
  * Finds a user by provider and provider ID.
@@ -13,12 +9,13 @@ import {
  * @param providerId - The user's ID from the provider.
  * @returns The user profile if found, otherwise undefined.
  */
-export const findUserByProvider = async (
+export const findUserByProviderQuery = async (
   provider: string,
   providerId: string
 ): Promise<UserProfile | undefined> => {
-  // Use the imported query function
-  return findUserByProviderQuery(provider, providerId);
+  return db('users') // Use hardcoded table name
+    .where({ provider: provider, provider_id: providerId })
+    .first();
 };
 
 /**
@@ -26,15 +23,20 @@ export const findUserByProvider = async (
  * @param userData - The user data to insert.
  * @returns The newly created user profile.
  */
-export const createUser = async (userData: {
+export const createUserQuery = async (userData: {
   provider: string;
   provider_id: string;
   email: string | null;
   display_name?: string;
   profile_picture_url?: string | null;
 }): Promise<UserProfile> => {
-  // Use the imported query function
-  return createUserQuery(userData);
+  const [newUser] = await db('users') // Use hardcoded table name
+    .insert({
+      id: uuidv4(),
+      ...userData,
+    })
+    .returning('*');
+  return newUser;
 };
 
 /**
@@ -42,7 +44,6 @@ export const createUser = async (userData: {
  * @param id - The internal user ID.
  * @returns The user profile if found, otherwise undefined.
  */
-export const findUserById = async (id: string): Promise<UserProfile | undefined> => {
-  // Use the imported query function
-  return findUserByIdQuery(id);
+export const findUserByIdQuery = async (id: string): Promise<UserProfile | undefined> => {
+  return db('users').where({ id }).first(); // Use hardcoded table name
 };

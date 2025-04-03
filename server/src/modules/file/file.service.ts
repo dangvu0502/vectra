@@ -5,11 +5,19 @@ import { v4 as uuidv4 } from 'uuid';
 import { FileConfig } from '../core/config'; // Assuming this config is still relevant for uploads
 // Keep QueryOptions import from model.ts, rename DbFileType for clarity if desired, or keep as is.
 import type { File as DbFileType, QueryOptions } from './file.model';
-import { db } from '@/database/connection'; // Import db instance
+import { db } from '@/database/connection'; // Keep db instance import (might be needed elsewhere or for passing)
 import { FileNotFoundError } from '@/modules/core/errors'; // Import error type
-import { FILES_TABLE, fileSchema, querySchema } from './file.model';
+import { fileSchema, querySchema } from './file.model'; // Removed FILES_TABLE import as it's now in queries.ts
 // Update the import to only import the types/class
 import { EmbeddingService, type IEmbeddingService } from './file.embedding.service';
+import {
+  insertFileQuery,
+  updateFileEmbeddingSuccessQuery,
+  updateFileEmbeddingErrorQuery,
+  queryFilesQuery,
+  findFileByIdQuery,
+  deleteFileByIdQuery,
+} from './file.queries'; // Import query functions
 
 // Interface using DbFileType and QueryOptions from model.ts
 export interface IFileService {
@@ -85,13 +93,8 @@ class FileService implements IFileService { // Keep class definition
         updated_at: new Date()
       };
 
-      // Insert document metadata into the database
-      const [insertedRecord] = await this.db(FILES_TABLE)
-        .insert(fileData)
-        .returning('*');
-
-      // Validate the inserted record right away
-      createdDbFile = fileSchema.parse(insertedRecord);
+      // Insert document metadata into the database using the query function
+      createdDbFile = await insertFileQuery(fileData); // Use query function
 
       // Type assertion or mapping might not be strictly needed if DbFileType structure matches EmbeddingFileType
       // Ensure the object passed matches the expected structure for processFile
@@ -101,24 +104,13 @@ class FileService implements IFileService { // Keep class definition
       // Use a non-blocking call, handle potential promise rejection for logging/status update
       this.embeddingService.processFile(fileForEmbedding).then(() => {
         console.log(`Embedding process initiated successfully for file ${fileId}`);
-        // Update document metadata in DB to mark embedding started/completed using jsonb_set
-        // This update happens *after* the initial response is sent
-        return this.db(FILES_TABLE)
-          .where({ id: fileId })
-          .update({
-            metadata: this.db.raw('jsonb_set(jsonb_set(metadata, \'{embeddingsCreated}\', \'true\'), \'{embeddingsTimestamp}\', ?::jsonb)', [JSON.stringify(new Date().toISOString())]),
-            updated_at: new Date()
-          });
+        // Update document metadata in DB using the query function
+        return updateFileEmbeddingSuccessQuery(fileId, new Date().toISOString()); // Use query function
       }).catch(embeddingError => { // Catch errors from the async embedding process
         console.error(`Embedding failed for file ${fileId}:`, embeddingError);
-        // Optionally update document metadata in DB to mark embedding error using jsonb_set
+        // Optionally update document metadata in DB using the query function
         const errorMsg = embeddingError instanceof Error ? embeddingError.message : 'Unknown embedding error';
-        return this.db(FILES_TABLE)
-          .where({ id: fileId })
-          .update({
-            metadata: this.db.raw('jsonb_set(metadata, \'{embeddingError}\', ?::jsonb)', [JSON.stringify(errorMsg)]),
-            updated_at: new Date()
-          });
+        return updateFileEmbeddingErrorQuery(fileId, errorMsg); // Use query function
       });
 
       // Return the validated DB document directly
@@ -151,35 +143,9 @@ class FileService implements IFileService { // Keep class definition
     // Calculate pagination
     const pageNum = parseInt(page, 10);
     const limitNum = parseInt(limit, 10);
-    const skip = (pageNum > 0 ? pageNum - 1 : 0) * limitNum;
-
+    // Use query function directly, passing parsed options
     try {
-      let queryBuilder = this.db(FILES_TABLE);
-
-      // Add search if query parameter is provided
-      if (q) {
-        // Consider searching specific fields if 'content' is too large/slow
-        queryBuilder = queryBuilder.where('filename', 'ilike', `%${q}%`); // Example: search filename
-      }
-
-      // Get total count based on the filtered query
-      const countResult = await queryBuilder.clone().count('* as count').first();
-      const total = countResult ? parseInt(countResult.count as string, 10) : 0;
-
-      // Get paginated results
-      const dbFiles = await queryBuilder
-        .orderBy(sortBy, sortOrder) // Use parsed sortBy/sortOrder
-        .offset(skip)               // Use calculated skip
-        .limit(limitNum)            // Use parsed limitNum
-        .select('*'); // Select all columns
-
-      // Validate each document against the schema
-      const validatedFiles = dbFiles.map(dbFile => fileSchema.parse(dbFile));
-
-      return {
-        files: validatedFiles, // Return DbFileType array
-        total
-      };
+      return await queryFilesQuery({ q, page, limit, sortBy, sortOrder }); // Use query function
     } catch (error) {
       console.error("Error in query:", error);
       throw error;
@@ -189,13 +155,8 @@ class FileService implements IFileService { // Keep class definition
   // Method implementation matches interface signature and return type
   async findById(id: string): Promise<DbFileType | null> {
     try {
-      const dbFile = await this.db(FILES_TABLE)
-        .where({ id })
-        .first(); // Use first()
-
-      // Return validated DbFileType or null
-      return dbFile ? fileSchema.parse(dbFile) : null;
-
+      // Use the imported query function
+      return await findFileByIdQuery(id);
     } catch (error) {
       console.error("Error in findById:", error);
       throw error;
@@ -204,8 +165,8 @@ class FileService implements IFileService { // Keep class definition
 
   async delete(id: string): Promise<void> {
     // 1. Find the document to get its path for file deletion
-    // findById now returns DbFileType | null
-    const fileToDelete = await this.findById(id);
+    // Use the query function to find the file
+    const fileToDelete = await findFileByIdQuery(id); // Use query function
 
     if (!fileToDelete) { // Check if document exists
       console.warn(`File with id "${id}" not found for deletion.`);
@@ -213,10 +174,8 @@ class FileService implements IFileService { // Keep class definition
     }
 
     try {
-      // 2. Delete from database first
-      const deletedRows = await this.db(FILES_TABLE)
-        .where({ id })
-        .delete();
+      // 2. Delete from database using the query function
+      const deletedRows = await deleteFileByIdQuery(id); // Use query function
 
       if (deletedRows === 0) {
         // This case might happen in race conditions, log a warning
