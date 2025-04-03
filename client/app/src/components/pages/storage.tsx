@@ -1,11 +1,11 @@
 import { FC, useState } from 'react';
 import { AppLayout } from '@/components/ui/app-layout';
 import { FileList } from '@/components/storage/file-list';
-import { useDocumentsQuery, useDocumentMutations } from '@/hooks/use-documents-query';
 import { StorageHeader } from '@/components/storage/storage-header';
 import { FileDetailsPanel } from '@/components/storage/file-details-panel';
 import { VectorStoreList } from '@/components/storage/vector-store-list';
 import { VectorStoreDetailsPanel } from '@/components/storage/vector-store-details-panel';
+import { useFileMutations, useFilesQuery } from '@/hooks/use-files-query';
 
 export const StoragePage: FC = () => {
   const [activeTab, setActiveTab] = useState<'files' | 'vectorStores'>('files');
@@ -37,13 +37,13 @@ export const StoragePage: FC = () => {
     usage: '256 KB'
   }]);
 
-  const { data, isLoading } = useDocumentsQuery({
+  const { data, isLoading } = useFilesQuery({
     query: searchQuery || undefined,
     page,
     limit
   });
 
-  const { uploadMutation, deleteMutation } = useDocumentMutations();
+  const { uploadMutation, deleteMutation } = useFileMutations();
 
   const _files = data?.files || [];
   const pagination = data?.pagination || { page: 1, limit: 10, total: 0 };

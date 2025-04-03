@@ -8,3 +8,11 @@ export interface VectraFile {
   status?: 'ready' | 'processing' | 'error';
   purpose?: 'assistants' | 'user_data';
 }
+
+export type VectraFileQueryOptions = {
+  query?: string;
+  page?: number;
+  limit?: number;
+  sortBy?: keyof VectraFile;
+  sortOrder?: 'asc' | 'desc';
+}
