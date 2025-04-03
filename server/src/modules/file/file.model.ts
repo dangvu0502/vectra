@@ -61,5 +61,5 @@ export const querySchema = z.object({
 
 export type QueryOptions = z.infer<typeof querySchema>;
 
-// Database table name
-export const FILES_TABLE = 'files';
+// Removed Database table name
+// export const FILES_TABLE = 'files';

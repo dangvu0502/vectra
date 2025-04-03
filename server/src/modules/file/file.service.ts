@@ -4,19 +4,18 @@ import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { FileConfig } from '../core/config'; // Assuming this config is still relevant for uploads
 // Keep QueryOptions import from model.ts, rename DbFileType for clarity if desired, or keep as is.
-import type { File as DbFileType, QueryOptions } from './file.model';
 import { db } from '@/database/connection'; // Keep db instance import (might be needed elsewhere or for passing)
 import { FileNotFoundError } from '@/modules/core/errors'; // Import error type
-import { fileSchema, querySchema } from './file.model'; // Removed FILES_TABLE import as it's now in queries.ts
+import { querySchema, type File as DbFileType, type QueryOptions } from './file.model';
 // Update the import to only import the types/class
 import { EmbeddingService, type IEmbeddingService } from './file.embedding.service';
 import {
-  insertFileQuery,
-  updateFileEmbeddingSuccessQuery,
-  updateFileEmbeddingErrorQuery,
-  queryFilesQuery,
-  findFileByIdQuery,
   deleteFileByIdQuery,
+  findFileByIdQuery,
+  insertFileQuery,
+  queryFilesQuery,
+  updateFileEmbeddingErrorQuery,
+  updateFileEmbeddingSuccessQuery,
 } from './file.queries'; // Import query functions
 
 // Interface using DbFileType and QueryOptions from model.ts

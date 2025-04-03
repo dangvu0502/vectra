@@ -1,11 +1,6 @@
 import { db } from '@/database/connection';
 import type { Knex } from 'knex';
-
-// Constants from the service
-const TEXT_EMBEDDINGS_TABLE = 'text_embeddings';
-const KNOWLEDGE_METADATA_INDEX_TABLE = 'knowledge_metadata_index';
-const MAX_RESULTS = 10;
-const MIN_SIMILARITY_THRESHOLD = 0.2;
+import { TEXT_EMBEDDINGS_TABLE, KNOWLEDGE_METADATA_INDEX_TABLE, MAX_RESULTS, MIN_SIMILARITY_THRESHOLD } from '@/config/constants';
 
 // Define interfaces for query results for clarity
 interface RawEntityResult {

@@ -1,12 +1,9 @@
 import { db } from '@/database/connection'; // Keep db import for default runner
 import type { Knex } from 'knex';
 import type { File as DbFileType } from './file.model'; // Import File type
+import { FILES_TABLE, TEXT_EMBEDDINGS_TABLE, KNOWLEDGE_METADATA_INDEX_TABLE, COLLECTIONS_TABLE } from '@/config/constants';
 
-// Hardcoded table names (as they were in the service)
-const TEXT_EMBEDDINGS_TABLE = 'text_embeddings';
-const KNOWLEDGE_METADATA_INDEX_TABLE = 'knowledge_metadata_index';
-const COLLECTIONS_TABLE = 'collections'; // Assuming this is the correct name
-const FILES_TABLE = 'files'; // Needed for the check in delete
+// Removed local constant declarations
 
 /**
  * Inserts multiple text embeddings in a transaction.

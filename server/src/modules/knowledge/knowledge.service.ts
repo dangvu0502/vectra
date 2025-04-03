@@ -1,6 +1,7 @@
 import { embedMany } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import type { Knex } from 'knex';
+import { TEXT_EMBEDDINGS_TABLE, KNOWLEDGE_METADATA_INDEX_TABLE, MAX_RESULTS, MIN_SIMILARITY_THRESHOLD } from '@/config/constants';
 import {
   findRelevantEntitiesQuery,
   searchByFileIdsQuery,
@@ -8,11 +9,6 @@ import {
   searchBySingleCollectionIdQuery,
 } from './knowledge.queries'; // Import query functions
 
-// Constants moved to queries.ts or used directly where needed
-// const TEXT_EMBEDDINGS_TABLE = 'text_embeddings';
-// const KNOWLEDGE_METADATA_INDEX_TABLE = 'knowledge_metadata_index';
-// const MAX_RESULTS = 10; // MAX_RESULTS is implicitly handled in query functions
-const MIN_SIMILARITY_THRESHOLD = 0.2; // Set threshold to 0.2 as requested
 // Fallback search constant removed
 
 interface SearchFilters {
