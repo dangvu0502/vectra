@@ -4,8 +4,10 @@ import { DetailsPanel, DetailItem, DetailsPanelActionButton } from '@/components
 import { FileManagementModal } from '@/components/shared/file-management-modal';
 import { StatusIndicator } from '@/components/ui/status-indicator';
 import { useFileManagement } from '@/hooks/use-file-management';
+import type { Collection as ApiCollection } from '@/api/types'; // Import the API type
 
-// Renamed interface
+// Remove the local interface definition
+/*
 interface CollectionDetails {
   id: string;
   name?: string;
@@ -16,10 +18,11 @@ interface CollectionDetails {
   lastUpdated?: string;
   usage?: string;
 }
+*/
 
-// Renamed interface and props
+// Use the imported ApiCollection type in the props interface
 interface CollectionDetailsPanelProps {
-  collection?: CollectionDetails; // Renamed prop
+  collection?: ApiCollection; // Use imported type
   onDelete?: (id: string) => Promise<void>;
   isDeleting?: boolean;
   onAddFiles?: (id: string) => Promise<void>; // TODO: Rename or repurpose if needed for collections
@@ -38,9 +41,9 @@ interface FileItem {
   isLinked?: boolean;
 }
 
-// Renamed component and props
+// Use the imported ApiCollection type in the component definition
 export const CollectionDetailsPanel: FC<CollectionDetailsPanelProps> = ({
-  collection, // Renamed prop
+  collection, // Use imported type
   onDelete,
   isDeleting,
   onAddFiles, // TODO: Review if this prop is still relevant for collections
@@ -220,42 +223,34 @@ export const CollectionDetailsPanel: FC<CollectionDetailsPanelProps> = ({
               <StatusIndicator status="active" />
             </DetailItem>
 
-            <DetailItem label="Size" className="mb-1">
-              <span className="text-sm text-muted-foreground">
-                {collection?.size || '0 KB'} {/* Use renamed prop */}
-              </span>
-            </DetailItem>
+            {/* Remove fields not present in ApiCollection */}
+            {/* <DetailItem label="Size">...</DetailItem> */}
+            {/* <DetailItem label="Documents">...</DetailItem> */}
+            {/* <DetailItem label="Usage">...</DetailItem> */}
+            {/* <DetailItem label="Last Active">...</DetailItem> */}
 
-            {/* TODO: Confirm if 'Documents' is the right term for collections */}
-            <DetailItem label="Documents" className="mb-1">
+            <DetailItem label="Description" className="mb-1">
               <span className="text-sm text-muted-foreground">
-                {collection?.fileCount || 0} files {/* Use renamed prop */}
-              </span>
-            </DetailItem>
-
-            <DetailItem label="Usage" className="mb-1">
-              <span className="text-sm text-muted-foreground">
-                {collection?.usage || '0 KB'} / month {/* Use renamed prop */}
-              </span>
-            </DetailItem>
-
-            <DetailItem label="Last Active" className="mb-1">
-              <span className="text-sm text-muted-foreground">
-                {collection?.lastUpdated ? new Date(collection.lastUpdated).toLocaleString() : 'Never'} {/* Use renamed prop */}
+                {collection?.description || '-'} {/* Display description */}
               </span>
             </DetailItem>
 
             <DetailItem label="Created At" className="mb-1">
               <span className="text-sm text-muted-foreground">
-                {collection?.createdAt ? new Date(collection.createdAt).toLocaleString() : 'Never'} {/* Use renamed prop */}
+                {/* Use created_at from ApiCollection, format if needed */}
+                {collection?.created_at ? new Date(collection.created_at).toLocaleString() : 'N/A'}
               </span>
             </DetailItem>
 
-            <DetailItem label="Metadata">
-              <pre className="text-xs text-muted-foreground bg-muted p-2 rounded-md overflow-auto w-full mt-1 max-h-[100px]">
-                {JSON.stringify(collection?.metadata ?? {}, null, 2)} {/* Use renamed prop */}
-              </pre>
+             <DetailItem label="Updated At" className="mb-1">
+              <span className="text-sm text-muted-foreground">
+                 {/* Use updated_at from ApiCollection, format if needed */}
+                {collection?.updated_at ? new Date(collection.updated_at).toLocaleString() : 'N/A'}
+              </span>
             </DetailItem>
+
+            {/* Remove Metadata display as it's not in ApiCollection */}
+            {/* <DetailItem label="Metadata">...</DetailItem> */}
           </div>
         )}
       </DetailsPanel>

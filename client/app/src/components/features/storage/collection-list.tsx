@@ -4,8 +4,10 @@ import { Table } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { ChatWindow } from "@/components/shared/chat-window";
 import { Tooltip } from "@/components/ui/tooltip";
+import type { Collection as ApiCollection } from '@/api/types'; // Import the API type
 
-// Renamed interface
+// Remove the local interface definition
+/*
 interface Collection {
   id: string;
   name?: string;
@@ -16,42 +18,44 @@ interface Collection {
   lastUpdated?: string;
   usage?: string;
 }
+*/
 
-// Renamed interface and props
+// Use the imported ApiCollection type in the props interface
 interface CollectionListProps {
-  collections: Collection[];
+  collections: ApiCollection[]; // Use imported type
   selectedCollection: string | null;
-  onCollectionSelect: (collection: Collection) => void;
+  onCollectionSelect: (collection: ApiCollection) => void; // Use imported type
   className?: string;
 }
 
-// Renamed component and props
+// Use the imported ApiCollection type in the component definition
 export const CollectionList: FC<CollectionListProps> = ({
   collections,
   selectedCollection,
   onCollectionSelect,
   className,
 }) => {
-  // Renamed state variable and type
-  const [chatCollection, setChatCollection] = useState<Collection | null>(null);
+  // Use the imported ApiCollection type for state
+  const [chatCollection, setChatCollection] = useState<ApiCollection | null>(null);
 
-  // Renamed parameter type
-  const handleChatClick = (e: React.MouseEvent, collection: Collection) => {
+  // Use the imported ApiCollection type for the handler parameter
+  const handleChatClick = (e: React.MouseEvent, collection: ApiCollection) => {
     e.stopPropagation();
-    setChatCollection(collection); // Use renamed state setter
+    setChatCollection(collection);
   };
 
   const handleChatClose = () => {
     setChatCollection(null); // Use renamed state setter
   };
 
+  // Adjust columns to use only valid keys from ApiCollection
   const columns = [
     {
       header: "Name",
-      key: "name" as const,
+      key: "name" as const, // 'name' exists in ApiCollection
       className: "w-[30%]",
-      // Renamed parameter type
-      render: (collection: Collection) => (
+      // Use the imported ApiCollection type for the render parameter
+      render: (collection: ApiCollection) => (
         <div className="flex items-center gap-2 whitespace-nowrap">
           <Database size={16} className="text-muted-foreground flex-shrink-0" />
           <span className="font-medium truncate">
@@ -60,54 +64,25 @@ export const CollectionList: FC<CollectionListProps> = ({
         </div>
       ),
     },
+    // Add 'Created At' column using a valid key
     {
-      header: "Size",
-      key: "size" as const,
-      className: "w-[15%]",
-      // Renamed parameter type
-      render: (collection: Collection) => (
-        <span className="whitespace-nowrap">{collection.size || "0 KB"}</span>
-      ),
-    },
-    {
-      header: "Files",
-      key: "fileCount" as const,
-      className: "w-[15%]",
-      // Renamed parameter type
-      render: (collection: Collection) => (
-        <span className="whitespace-nowrap">{`${collection.fileCount || 0} files`}</span>
-      ),
-    },
-    {
-      header: "Last Active",
-      key: "lastUpdated" as const,
-      className: "w-[20%]",
-      // Renamed parameter type
-      render: (collection: Collection) => (
+      header: "Created At",
+      key: "created_at" as const, // 'created_at' exists in ApiCollection
+      className: "w-[25%]", // Adjust width as needed
+      render: (collection: ApiCollection) => (
         <span className="whitespace-nowrap">
-          {collection.lastUpdated
-            ? new Date(collection.lastUpdated).toLocaleString()
-            : "Never"}
+          {new Date(collection.created_at).toLocaleString()}
         </span>
       ),
     },
-    {
-      header: "Usage",
-      key: "usage" as const,
-      className: "w-[15%]",
-      // Renamed parameter type
-      render: (collection: Collection) => (
-        <span className="whitespace-nowrap">{`${collection.usage || "0 KB"} / month`}</span>
-      ),
-    },
+    // Remove columns for keys not in ApiCollection: size, fileCount, lastUpdated, usage
     {
       header: "Actions",
       key: "id" as const,
       className: "w-[5%] text-right",
-      // Renamed parameter type
-      render: (collection: Collection) => (
+      // Use the imported ApiCollection type for the render parameter
+      render: (collection: ApiCollection) => (
         <div className="flex justify-end">
-          {/* Updated tooltip content */}
           <Tooltip content="Chat with this collection">
             <Button
               variant="ghost"
@@ -128,20 +103,19 @@ export const CollectionList: FC<CollectionListProps> = ({
       <Table
         columns={columns}
         data={collections} // Use renamed prop
-        onRowClick={onCollectionSelect} // Use renamed prop
-        isRowSelected={(collection) => selectedCollection === collection.id} // Use renamed prop and state variable
+        onRowClick={onCollectionSelect}
+        isRowSelected={(collection: ApiCollection) => selectedCollection === collection.id} // Use imported type
         className={className}
-        emptyMessage="No collections found" // Updated empty message
+        emptyMessage="No collections found"
       />
 
-      {/* Use renamed state variable */}
       {chatCollection && (
         <ChatWindow
           onClose={handleChatClose}
           knowledgeSource={{
-            type: "collection", // Updated type
-            id: chatCollection.id, // Use renamed state variable
-            name: chatCollection.name || "Untitled collection", // Use renamed state variable and updated text
+            type: "collection",
+            id: chatCollection.id,
+            name: chatCollection.name || "Untitled collection",
           }}
         />
       )}

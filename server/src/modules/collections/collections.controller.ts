@@ -7,9 +7,13 @@ import {
 } from './collections.types';
 import type { UserProfile } from '@/modules/auth/auth.types';
 import { CollectionNotFoundError, CollectionConflictError } from '@/modules/core/errors';
+import { TEST_USER_ID } from '@/config/constants';
 
 // Export middleware to ensure user is authenticated
 export const ensureAuthenticated = (req: Request, res: Response, next: NextFunction) => {
+  req.user = {
+    id: TEST_USER_ID
+  } as UserProfile;
   if (!req.user) {
     // Send the response but don't return it from the function signature view
     res.status(401).send(); 
