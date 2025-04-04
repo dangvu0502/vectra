@@ -147,3 +147,47 @@ export const deleteFileByIdQuery = async (
     .where({ id })
     .delete();
 };
+
+// --- Collection File Link Queries (Moved to collections.queries.ts) ---
+// Queries related to the collection_files join table are now in collections.queries.ts
+// Remove addFileToCollectionLinkQuery, removeFileFromCollectionLinkQuery, findFilesByCollectionIdQuery
+
+const COLLECTION_FILES_TABLE = 'collection_files'; // Keep for findCollectionsByFileIdQuery if kept here
+
+/**
+ * Creates a link between a file and a collection.
+ * @param fileId - The ID of the file.
+ * @param collectionId - The ID of the collection.
+ * @param trx - Optional transaction object.
+/* --- REMOVED Queries ---
+export const addFileToCollectionLinkQuery = ...
+export const removeFileFromCollectionLinkQuery = ...
+export const findFilesByCollectionIdQuery = ...
+*/
+
+/**
+ * Finds all collections associated with a specific file ID for a given user. (Kept in file module)
+ * Joins collections with collection_files and files to ensure ownership.
+ * @param fileId - The ID of the file.
+ * @param userId - The ID of the user owning the file.
+ * @param trx - Optional transaction object.
+ * @returns An array of collection records (you might need to import Collection type).
+ */
+// Assuming Collection type is available or imported
+// import type { Collection } from '@/modules/collections/collections.types';
+export const findCollectionsByFileIdQuery = async (
+  fileId: string,
+  userId: string,
+  trx?: Knex.Transaction
+): Promise<any[]> => { // Replace 'any[]' with 'Collection[]' after importing
+  const queryBuilder = trx ? trx('collections') : db('collections');
+  const dbCollections = await queryBuilder
+    .select(`collections.*`) // Select all columns from collections table
+    .innerJoin(COLLECTION_FILES_TABLE, `collections.id`, `${COLLECTION_FILES_TABLE}.collection_id`)
+    .innerJoin(FILES_TABLE, `${COLLECTION_FILES_TABLE}.file_id`, `${FILES_TABLE}.id`) // Join files to check ownership
+    .where(`${COLLECTION_FILES_TABLE}.file_id`, fileId)
+    .andWhere(`${FILES_TABLE}.user_id`, userId); // Ensure user owns the file
+
+  // TODO: Validate results against CollectionSchema if imported
+  return dbCollections;
+};

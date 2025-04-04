@@ -1,4 +1,4 @@
-import { ApiResponse, VectraFile, VectraFileQueryOptions } from '@/api/types';
+import { ApiResponse, VectraFile, VectraFileQueryOptions, Collection } from '@/api/types'; // Import Collection
 import { apiClient } from '../core/client';
 import { API_CONFIG } from '../core/config';
 
@@ -45,6 +45,18 @@ class FilesService {
     if (options.sortOrder) url.searchParams.append('sortOrder', options.sortOrder);
 
     return apiClient<ApiResponse<QueryResponse>>(url.toString());
+  }
+
+  /**
+   * Fetches collections associated with a specific file.
+   * @param fileId - The ID of the file.
+   */
+  async getCollectionsForFile(fileId: string): Promise<ApiResponse<{ collections: Collection[] }>> {
+    // Backend returns { status: 'success', data: { collections } }
+    // Assuming apiClient returns the full ApiResponse structure here.
+    return apiClient<ApiResponse<{ collections: Collection[] }>>(`${this.baseUrl}/${fileId}/collections`, {
+      method: 'GET',
+    });
   }
 }
 

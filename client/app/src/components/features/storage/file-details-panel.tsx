@@ -1,7 +1,8 @@
 import { FC, useState } from 'react';
-import { Plus, HelpCircle } from 'lucide-react';
+import { HelpCircle, Loader2 } from 'lucide-react'; // Removed Plus, Added Loader2
 import { Tooltip } from '@/components/ui/tooltip';
 import { DetailsPanel, DetailItem, DetailsPanelActionButton } from '@/components/ui/details-panel';
+import { useFileCollections } from '@/hooks/use-file-collections'; // Import the hook
 
 interface FileDetails {
   name: string;
@@ -9,7 +10,7 @@ interface FileDetails {
   size: string;
   createdAt: string;
   status: 'ready' | 'processing' | 'error';
-  collections?: Array<{ id: string; name: string; }>; // Renamed prop
+  // Remove collections prop, will fetch using hook
 }
 
 interface FileDetailsPanelProps {
@@ -24,7 +25,8 @@ export const FileDetailsPanel: FC<FileDetailsPanelProps> = ({
   onDelete,
   isDeleting
 }) => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  // Fetch collections for the current file
+  const { collections: fileCollections, isLoading: isLoadingCollections } = useFileCollections(file?.id);
 
   if (!file) {
     return null;
@@ -84,24 +86,28 @@ export const FileDetailsPanel: FC<FileDetailsPanelProps> = ({
           </div>
         }
       >
+        {/* Display fetched collections */}
         <div className="space-y-1">
-          {/* Use renamed prop */}
-          {file.collections && file.collections.length > 0 ? (
+          {isLoadingCollections ? (
+            <div className="flex items-center text-xs text-muted-foreground">
+              <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+              Loading collections...
+            </div>
+          ) : fileCollections && fileCollections.length > 0 ? (
             <div className="space-y-1">
-              {/* Use renamed prop */}
-              {file.collections.map(collection => (
+              {fileCollections.map(collection => (
                 <div
-                  key={collection.id} // Use collection.id
+                  key={collection.id}
                   className="text-xs text-muted-foreground hover:text-foreground transition-colors duration-200 flex items-center gap-2"
                 >
                   <span className="w-1.5 h-1.5 rounded-full bg-primary/50" />
-                  {collection.name} {/* Use collection.name */}
+                  {collection.name}
                 </div>
               ))}
             </div>
           ) : (
             <span className="text-xs text-muted-foreground">
-              Not used in any collections {/* Updated text */}
+              Not used in any collections
             </span>
           )}
         </div>

@@ -1,5 +1,6 @@
-import { apiClient } from '@/api/core/client';
-import type { Collection, CreateCollectionInput, UpdateCollectionInput } from '@/api/types';
+import { apiClient } from '@/api/core/client'; // Remove ApiResponse import
+import type { Collection, CreateCollectionInput, UpdateCollectionInput } from '@/api/types/collection'; // Import directly
+import type { File } from '@/api/types/file'; // Import File type directly
 
 const BASE_PATH = '/api/v1/collections'; // Using the proxy path
 
@@ -71,5 +72,62 @@ export const collectionsService = {
       throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
     }
     // No return value needed for successful deletion (204)
+  },
+
+  /**
+   * Fetches files associated with a specific collection.
+   * @param collectionId - The ID of the collection.
+   */
+  async getCollectionFiles(collectionId: string): Promise<{ files: File[]; total: number }> {
+    // Backend returns { status: 'success', data: { files, total } }
+    // apiClient returns the 'data' part directly on success.
+    // Define the expected structure of the successful response data
+    type SuccessResponse = {
+      status: 'success';
+      data: { files: File[]; total: number };
+    };
+    // Define a broader type for the raw JSON response which might include errors
+    type RawResponse = SuccessResponse | { status: 'error'; message: string };
+
+    const response = await apiClient<RawResponse>( // Expect the raw response structure
+      `${BASE_PATH}/${collectionId}/files`,
+      { method: 'GET' }
+    );
+
+    // Type guard to check if the response indicates success
+    if (response.status === 'success') {
+      return response.data; // Return the nested data object
+    } else {
+      // Throw an error if the status is not 'success'
+      throw new Error(response.message || 'Failed to fetch collection files');
+    }
+  },
+
+  /**
+   * Adds a file to a specific collection.
+   * @param collectionId - The ID of the collection.
+   * @param fileId - The ID of the file to add.
+   */
+  async addFileToCollection(collectionId: string, fileId: string): Promise<{ message: string }> {
+    // Backend returns { message: '...' } on success
+    return apiClient<{ message: string }>(`${BASE_PATH}/${collectionId}/files`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ fileId }),
+    });
+  },
+
+  /**
+   * Removes a file from a specific collection.
+   * @param collectionId - The ID of the collection.
+   * @param fileId - The ID of the file to remove.
+   */
+  async removeFileFromCollection(collectionId: string, fileId: string): Promise<{ message: string }> {
+     // Backend returns { message: '...' } on success
+    return apiClient<{ message: string }>(`${BASE_PATH}/${collectionId}/files/${fileId}`, {
+      method: 'DELETE',
+    });
   },
 };

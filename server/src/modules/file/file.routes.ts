@@ -2,6 +2,7 @@ import { fileController } from '@/modules/file';
 import { DEFAULT_CONFIG } from '@/modules/core/config';
 import { Router } from 'express';
 import multer from 'multer';
+import { ensureAuthenticated } from '@/modules/collections/collections.controller'; // Import auth middleware
 
 const router = Router();
 const upload = multer({
@@ -9,20 +10,29 @@ const upload = multer({
     limits: { fileSize: DEFAULT_CONFIG.maxFileSize },
 });
 
-router.post('/upload', upload.single('file'), (req, res) => {
-    return fileController.upload(req, res);
+// Pass next to controller methods
+router.post('/upload', upload.single('file'), (req, res, next) => {
+    return fileController.upload(req, res, next);
 });
 
-router.get('/', (req, res) => {
-    return fileController.query(req, res);
+router.get('/', (req, res, next) => {
+    return fileController.query(req, res, next);
 });
 
-router.get('/:id', (req, res) => {
-    return fileController.findById(req, res);
+router.get('/:id', (req, res, next) => {
+    return fileController.findById(req, res, next);
 });
 
-router.delete('/:id', (req, res) => {
-    return fileController.delete(req, res);
+router.delete('/:id', ensureAuthenticated, (req, res, next) => { // Added ensureAuthenticated and next
+    // Pass next to the controller for error handling
+    return fileController.delete(req, res, (err) => { if (err) console.error(err); }); // Basic error logging
 });
+
+// GET /api/files/:id/collections - Get collections for a specific file
+router.get('/:id/collections', ensureAuthenticated, (req, res, next) => {
+    // Pass next to the controller for error handling
+    return fileController.getCollectionsForFile(req, res, next);
+});
+
 
 export { router as fileRoutes };

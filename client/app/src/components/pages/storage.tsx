@@ -102,11 +102,10 @@ export const StoragePage: FC = () => {
   // Use the createCollection mutation from the hook
   const handleCreateCollection = async (data: {
     name: string;
-    description?: string; // Make description optional to match API type
-    // similarityThreshold is not part of CreateCollectionInput, remove if not needed by API
+    description?: string | null; // Allow null for description
   }) => {
     try {
-      // Call the mutation function from the hook
+      // Call the mutation function from the hook, ensuring description is string | undefined
       await createCollection({
         name: data.name,
         description: data.description || undefined, // Pass description or undefined

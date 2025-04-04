@@ -1,24 +1,27 @@
-import type { Request, Response } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import fs from 'fs/promises';
 import { z } from 'zod';
-import { DocumentNotFoundError as FileNotFoundError } from '@/modules/core/errors';
-// Import service interface and instance
+import { FileNotFoundError, ForbiddenError } from '@/modules/core/errors'; // Import ForbiddenError
 import type { IFileService } from './file.service';
 import { fileService } from './file.service';
-// Import Zod schemas and derived types from model.ts
 import { fileSchema, querySchema, type File as DbFileType } from './file.schema';
 import { v4 as uuidv4 } from 'uuid';
-import { TEST_USER_ID } from '@/database/constants';
+import { TEST_USER_ID } from '@/database/constants'; // Assuming TEST_USER_ID is still used for auth placeholder
+import type { UserProfile } from '@/modules/auth/auth.types';
 
-class FileController { // Keep class definition
-  private static instance: FileController | null = null; // Keep static instance
+// Zod schema for ID parameter validation
+const IdParamSchema = z.object({
+  id: z.string().uuid("Invalid File ID format"),
+});
+
+class FileController {
+  private static instance: FileController | null = null;
   private readonly fileService: IFileService;
 
-  private constructor(fileService: IFileService) { // Keep constructor private
+  private constructor(fileService: IFileService) {
     this.fileService = fileService;
   }
 
-  // Keep static getInstance method
   static getInstance(fileService: IFileService): FileController {
     if (!FileController.instance) {
       FileController.instance = new FileController(fileService);
@@ -26,123 +29,132 @@ class FileController { // Keep class definition
     return FileController.instance;
   }
 
-  // Keep static resetInstance method (optional)
   static resetInstance(): void {
     FileController.instance = null;
   }
 
-  async upload(req: Request & { file?: Express.Multer.File }, res: Response) {
+  // POST /files - Upload a new file
+  async upload(req: Request & { file?: Express.Multer.File }, res: Response, next: NextFunction) {
     try {
       if (!req.file) {
+        // Use return void for consistency in error responses
         return void res.status(400).json({ message: 'No file uploaded' });
       }
 
-      switch (req.file.mimetype) {
-        
-      }
+      // Basic mimetype check example (can be expanded)
+      // switch (req.file.mimetype) {
+      //   // Add allowed types
+      // }
 
       const content = await fs.readFile(req.file.path, 'utf-8');
-      // Service method now returns validated DbFileType
+      const user = req.user as UserProfile; // Assuming auth middleware adds user
+
+      // Pass collectionId if provided in the body (for initial assignment during upload)
       const file: DbFileType = await this.fileService.upload({
         file: req.file,
         content,
-        collectionId: req.body?.collection_id,
-        userId: TEST_USER_ID
+        collectionId: req.body?.collection_id, // This field is now ignored by the service due to schema change
+        userId: user.id // Use authenticated user ID
       });
-      // Validation here is likely redundant as the service should return validated data
-      // const validatedFile = fileSchema.parse(file);
 
-      // Check metadata for embedding status - Note: this reflects status *at time of DB record creation/update*
-      // The async embedding process might still be running or fail later.
+      // Determine embedding status based on metadata
       const embeddingStatus = file.metadata?.embeddingsCreated
         ? { embeddingStatus: 'success', embeddingTimestamp: file.metadata.embeddingsTimestamp }
         : file.metadata?.embeddingError
           ? { embeddingStatus: 'error', embeddingError: file.metadata.embeddingError }
-          : { embeddingStatus: 'pending' }; // Indicate pending if not success/error yet
+          : { embeddingStatus: 'pending' };
 
       res.status(201).json({
         status: 'success',
         data: {
-          ...file, // Use the validated file from the service
+          ...file,
           embedding: embeddingStatus
         }
       });
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        return void res.status(400).json({ message: 'Invalid file data', errors: error.errors });
-      }
-      if (error instanceof Error) {
-        return void res.status(500).json({ message: error.message });
-      }
-      res.status(500).json({ message: 'Upload failed' });
+      // Pass errors to the central error handler
+      next(error);
     }
   }
 
-  async query(req: Request, res: Response) {
+  // GET /files - Query files with pagination/search
+  async query(req: Request, res: Response, next: NextFunction) {
     try {
-      console.log('Query params:', req.query);
-      // Validate query parameters first
       const validatedQuery = querySchema.parse(req.query);
-      // Service method returns validated files and total
       const result = await this.fileService.query(validatedQuery);
-      // Validation here is redundant as the service guarantees validated output based on its return type
-      // const validatedFiles = z.array(fileSchema).parse(result.files);
-      console.log('Files found:', result.files.length);
       res.json({
         status: 'success',
-        data: { files: result.files, total: result.total } // Use result directly
+        data: { files: result.files, total: result.total }
       });
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        return void res.status(400).json({ message: 'Invalid query parameters', errors: error.errors });
-      }
-      if (error instanceof Error) {
-        return void res.status(500).json({ message: error.message });
-      }
-      res.status(500).json({ message: 'Query failed' });
+      next(error); // Pass errors to the central error handler
     }
   }
 
-  async findById(req: Request, res: Response) {
+  // GET /files/:id - Get a single file by ID
+  async findById(req: Request, res: Response, next: NextFunction) {
     try {
-      // Service method returns validated DbFileType or null
-      const file = await this.fileService.findById(req.params.id);
+      const { id } = IdParamSchema.parse(req.params); // Validate ID format
+      const file = await this.fileService.findById(id);
       if (!file) {
-        return void res.status(404).json({ message: `File with id "${req.params.id}" not found` });
+        throw new FileNotFoundError(id); // Throw specific error
       }
-      // Validation here is redundant
-      // const validatedFile = fileSchema.parse(file);
-      res.json({ data: file }); // Use file directly
+      res.json({ data: file });
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        return void res.status(400).json({ message: 'Invalid file ID', errors: error.errors });
-      }
-      if (error instanceof Error) {
-        return void res.status(500).json({ message: error.message });
-      }
-      res.status(500).json({ message: 'Find failed' });
+      next(error); // Pass errors to the central error handler
     }
   }
 
-  async delete(req: Request<{ id: string }>, res: Response) {
+  // DELETE /files/:id - Delete a file by ID
+  async delete(req: Request, res: Response, next: NextFunction) {
     try {
-      // Validate the ID parameter from the request
-      const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+      const { id } = IdParamSchema.parse(req.params); // Validate ID format
+      // TODO: Add user ownership check here before deleting
+      // const user = req.user as UserProfile;
+      // const file = await this.fileService.findById(id);
+      // if (!file || file.user_id !== user.id) {
+      //   throw new FileNotFoundError(id); // Or ForbiddenError
+      // }
       await this.fileService.delete(id);
-      res.status(204).send();
+      res.status(204).send(); // No content on success
     } catch (error) {
+      next(error); // Pass errors to the central error handler
+    }
+  }
+
+  // Removed methods related to collection file linking:
+  // - addFileToCollection
+  // - removeFileFromCollection
+  // - getFilesInCollection
+  // These are now handled by collectionsController
+
+  // GET /files/:id/collections - Get collections associated with a file
+  async getCollectionsForFile(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { id: fileId } = IdParamSchema.parse(req.params); // Validate file ID
+      const user = req.user as UserProfile; // Assuming auth middleware adds user
+
+      // TODO: Import Collection type and use it instead of any[] in service/query
+      const collections = await this.fileService.getCollectionsForFile(fileId, user.id);
+
+      res.status(200).json({
+        status: 'success',
+        data: { collections } // Return the list of collections
+      });
+    } catch (error) {
+      // Handle specific errors like FileNotFoundError or ForbiddenError if needed
       if (error instanceof z.ZodError) {
         return void res.status(400).json({ message: 'Invalid file ID', errors: error.errors });
       }
       if (error instanceof FileNotFoundError) {
-        return void res.status(404).json({ message: error.message });
+         return void res.status(404).json({ message: error.message });
       }
-      if (error instanceof Error) {
-        return void res.status(500).json({ message: error.message });
-      }
-      res.status(500).json({ message: 'Delete failed' });
+       if (error instanceof ForbiddenError) { // Now ForbiddenError is recognized
+         return void res.status(403).json({ message: error.message });
+       }
+      next(error); // Pass other errors (including unknown) to the central error handler
     }
   }
 }
-// Keep instance export
+
 export const fileController = FileController.getInstance(fileService);

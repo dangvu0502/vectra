@@ -4,10 +4,33 @@ import {
   CreateCollectionSchema,
   UpdateCollectionSchema,
   CollectionIdParamSchema,
+  // Assuming we'll add Zod schemas for file linking if needed, e.g., in collections.types.ts
+  // AddFileToCollectionParamsSchema, AddFileToCollectionBodySchema, RemoveFileFromCollectionParamsSchema
 } from './collections.types';
 import type { UserProfile } from '@/modules/auth/auth.types';
-import { CollectionNotFoundError, CollectionConflictError } from '@/modules/core/errors';
+import {
+  CollectionNotFoundError,
+  CollectionConflictError,
+  FileNotFoundError, // Import other needed errors
+  ForbiddenError
+} from '@/modules/core/errors';
 import { TEST_USER_ID } from '@/config/constants';
+import { z } from 'zod'; // Import Zod for validation
+
+// Define Zod schemas here or import from types.ts if defined there
+const AddFileToCollectionParamsSchema = z.object({
+  collectionId: z.string().uuid("Invalid Collection ID format"),
+});
+const AddFileToCollectionBodySchema = z.object({
+  fileId: z.string().uuid("Invalid File ID format"),
+});
+const RemoveFileFromCollectionParamsSchema = z.object({
+  collectionId: z.string().uuid("Invalid Collection ID format"),
+  fileId: z.string().uuid("Invalid File ID format"),
+});
+const GetFilesInCollectionParamsSchema = z.object({
+  collectionId: z.string().uuid("Invalid Collection ID format"),
+});
 
 // Export middleware to ensure user is authenticated
 export const ensureAuthenticated = (req: Request, res: Response, next: NextFunction) => {
@@ -127,6 +150,76 @@ export const collectionsController = {
         res.status(404).json({ message: error.message });
         return; // End execution for this handler
       }
+      next(error);
+    }
+  },
+
+  // --- File Linking Controller Methods ---
+
+  // GET /collections/:collectionId/files
+  async getCollectionFiles(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { collectionId } = GetFilesInCollectionParamsSchema.parse(req.params);
+      const user = req.user as UserProfile;
+
+      const files = await collectionsService.getFilesInCollection(user.id, collectionId);
+      res.status(200).json({
+        status: 'success',
+        data: { files, total: files.length }
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return void res.status(400).json({ message: 'Invalid collection ID', errors: error.errors });
+      }
+      if (error instanceof CollectionNotFoundError) {
+        return void res.status(404).json({ message: error.message });
+      }
+      next(error);
+    }
+  },
+
+  // POST /collections/:collectionId/files
+  async addFileToCollection(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { collectionId } = AddFileToCollectionParamsSchema.parse(req.params);
+      const { fileId } = AddFileToCollectionBodySchema.parse(req.body);
+      const user = req.user as UserProfile;
+
+      await collectionsService.addFileToCollection(user.id, collectionId, fileId);
+      res.status(200).json({ message: 'File added to collection successfully.' });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return void res.status(400).json({ message: 'Invalid request data', errors: error.errors });
+      }
+      if (error instanceof CollectionNotFoundError || error instanceof FileNotFoundError) {
+        return void res.status(404).json({ message: error.message });
+      }
+      if (error instanceof ForbiddenError) {
+         return void res.status(403).json({ message: error.message });
+      }
+      next(error);
+    }
+  },
+
+  // DELETE /collections/:collectionId/files/:fileId
+  async removeFileFromCollection(req: Request, res: Response, next: NextFunction) {
+     try {
+      const { collectionId, fileId } = RemoveFileFromCollectionParamsSchema.parse(req.params);
+      const user = req.user as UserProfile;
+
+      await collectionsService.removeFileFromCollection(user.id, collectionId, fileId);
+      res.status(200).json({ message: 'File removed from collection successfully.' }); // Send 200 on success
+    } catch (error) {
+       if (error instanceof z.ZodError) {
+        return void res.status(400).json({ message: 'Invalid request parameters', errors: error.errors });
+      }
+      if (error instanceof CollectionNotFoundError) { // Only check CollectionNotFound here
+        return void res.status(404).json({ message: error.message });
+      }
+       // ForbiddenError check might not be strictly necessary if CollectionNotFound covers ownership
+       if (error instanceof ForbiddenError) {
+         return void res.status(403).json({ message: error.message });
+       }
       next(error);
     }
   },

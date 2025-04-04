@@ -5,18 +5,22 @@ import { v4 as uuidv4 } from 'uuid';
 import { FileConfig } from '../core/config'; // Assuming this config is still relevant for uploads
 // Keep QueryOptions import from model.ts, rename DbFileType for clarity if desired, or keep as is.
 import { db } from '@/database/connection'; // Keep db instance import (might be needed elsewhere or for passing)
-import { FileNotFoundError } from '@/modules/core/errors'; // Import error type
+import { FileNotFoundError, CollectionNotFoundError, ForbiddenError } from '@/modules/core/errors'; // Import error types
 import { querySchema, type File as DbFileType, type QueryOptions } from './file.schema';
 // Update the import to only import the types/class
 import { EmbeddingService, type IEmbeddingService } from './file.embedding.service';
+import { collectionsQueries } from '@/modules/collections/collections.queries'; // Import collections queries for ownership check
 import {
   deleteFileByIdQuery,
   findFileByIdQuery,
+  // findFilesByCollectionIdQuery, // Removed - Moved to collections.queries
   insertFileQuery,
   queryFilesQuery,
+  // updateFileCollectionIdQuery, // Removed - No longer used
   updateFileEmbeddingErrorQuery,
   updateFileEmbeddingSuccessQuery,
-} from './file.queries'; // Import query functions
+  findCollectionsByFileIdQuery, // Keep this one as it's file-centric
+} from './file.queries';
 
 // Interface using DbFileType and QueryOptions from model.ts
 export interface IFileService {
@@ -29,9 +33,14 @@ export interface IFileService {
   query(options?: QueryOptions): Promise<{ files: DbFileType[]; total: number }>; // Use QueryOptions again
   findById(id: string): Promise<DbFileType | null>;
   delete(id: string): Promise<void>;
+  // Remove methods now handled by collectionsService
+  // addFileToCollection(fileId: string, collectionId: string, userId: string): Promise<void>;
+  // removeFileFromCollection(fileId: string, userId: string): Promise<void>; // Note: signature was incorrect before anyway
+  // getFilesInCollection(collectionId: string, userId: string): Promise<DbFileType[]>;
+  getCollectionsForFile(fileId: string, userId: string): Promise<any[]>; // Keep this one (replace any later)
 }
 
-class FileService implements IFileService { // Keep class definition
+class FileService implements IFileService {
   private static instance: FileService | null = null; // Keep static instance
   private readonly db: Knex;
   private readonly embeddingService: IEmbeddingService;
@@ -203,6 +212,40 @@ class FileService implements IFileService { // Keep class definition
       console.error(`Error deleting file ${id} from database:`, dbError);
       throw dbError; // Re-throw DB error
     }
+  }
+
+  // REMOVE addFileToCollection method implementation
+  /*
+  async addFileToCollection(fileId: string, collectionId: string, userId: string): Promise<void> {
+    // ... implementation removed ...
+  }
+  */
+
+  // REMOVE removeFileFromCollection method implementation
+  /*
+  async removeFileFromCollection(fileId: string, userId: string): Promise<void> { // Note: signature was incorrect before anyway
+    // ... implementation removed ...
+  }
+  */
+
+  // REMOVE getFilesInCollection method implementation (already commented out)
+
+  // Keep getCollectionsForFile (if needed, otherwise remove)
+  // TODO: Import Collection type properly and use it instead of any[]
+  async getCollectionsForFile(fileId: string, userId: string): Promise<any[]> {
+     // 1. Verify the user owns the file
+     const file = await findFileByIdQuery(fileId);
+    if (!file) {
+      throw new FileNotFoundError(fileId);
+    }
+    if (file.user_id !== userId) {
+      throw new ForbiddenError('User does not own this file.');
+    }
+
+    // 2. Fetch collections using the query from file.queries
+     const collections = await findCollectionsByFileIdQuery(fileId, userId);
+     // TODO: Validate results against CollectionSchema if imported
+     return collections; // Return raw for now
   }
 }
 

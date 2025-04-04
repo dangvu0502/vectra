@@ -46,6 +46,24 @@ export class CollectionConflictError extends CollectionError {
     super(`A collection with the name "${name}" already exists.`);
     this.name = 'CollectionConflictError';
   }
+} // Removed extra brace
+
+// General App Errors
+export class AppError extends Error {
+  public readonly statusCode: number;
+
+  constructor(message: string, statusCode: number = 500) {
+    super(message);
+    this.name = 'AppError';
+    this.statusCode = statusCode;
+  }
+}
+
+export class ForbiddenError extends AppError {
+  constructor(message: string = 'Forbidden') {
+    super(message, 403); // HTTP 403 Forbidden status code
+    this.name = 'ForbiddenError';
+  }
 }
 
 
