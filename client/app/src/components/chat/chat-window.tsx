@@ -5,7 +5,7 @@ import { AppChat } from '@/components/shared/app-chat';
 import { cn } from '@/lib/utils';
 
 interface KnowledgeSource {
-  type: 'file' | 'vectorStore';
+  type: 'file' | 'collection'; // Added 'collection' type
   id: string;
   name: string;
 }
@@ -64,6 +64,7 @@ export function ChatWindow({ onClose, knowledgeSource }: ChatWindowProps) {
         </div>
         
         <div className="h-[calc(100%-105px)]">
+          {/* Pass knowledgeSource directly, AppChat should handle the type */}
           <AppChat knowledgeSource={knowledgeSource} />
         </div>
       </div>

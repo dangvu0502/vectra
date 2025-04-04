@@ -5,12 +5,12 @@ import { Tab, Tabs } from '@/components/ui/tabs';
 import { Tooltip } from '@/components/ui/tooltip';
 
 interface StorageHeaderProps {
-  activeTab: 'files' | 'vectorStores';
-  onTabChange: (tab: 'files' | 'vectorStores') => void;
+  activeTab: 'files' | 'collections'; // Renamed type value
+  onTabChange: (tab: 'files' | 'collections') => void; // Renamed type value
   onUpload: (file: File) => Promise<void>;
   isUploading: boolean;
-  onCreateVectorStore?: () => Promise<void>;
-  isCreatingVectorStore?: boolean;
+  onCreateCollection?: () => Promise<void>; // Renamed prop
+  isCreatingCollection?: boolean; // Renamed prop
 }
 
 export const StorageHeader: FC<StorageHeaderProps> = ({
@@ -18,8 +18,8 @@ export const StorageHeader: FC<StorageHeaderProps> = ({
   onTabChange,
   onUpload,
   isUploading,
-  onCreateVectorStore,
-  isCreatingVectorStore
+  onCreateCollection, // Use renamed prop
+  isCreatingCollection // Use renamed prop
 }) => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const handleFileSelect = () => {
@@ -62,15 +62,15 @@ export const StorageHeader: FC<StorageHeaderProps> = ({
           <Tab 
             label="Files" 
             active={activeTab === 'files'} 
-            onClick={() => onTabChange('files')} 
+            onClick={() => onTabChange('files')}
           />
-          <Tab 
-            label="Vector stores" 
-            active={activeTab === 'vectorStores'} 
-            onClick={() => onTabChange('vectorStores')} 
+          <Tab
+            label="Collections" // Updated label
+            active={activeTab === 'collections'} // Use renamed type value
+            onClick={() => onTabChange('collections')} // Use renamed type value
           />
         </Tabs>
-        
+
         <div className="flex gap-3">
           {activeTab === 'files' ? (
             <>
@@ -84,9 +84,10 @@ export const StorageHeader: FC<StorageHeaderProps> = ({
                 <Upload size={16} className="transition-transform duration-200 group-hover:scale-110 group-hover:rotate-6" />
                 {isUploading ? 'Uploading...' : 'Upload'}
               </Button>
-              <Tooltip content="Learn about vector stores and how to organize your files efficiently">
-                <Button 
-                  variant="outline" 
+              {/* Updated tooltip content */}
+              <Tooltip content="Learn about collections and how to organize your files efficiently">
+                <Button
+                  variant="outline"
                   size="sm"
                   className="shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105 hover:bg-accent/20 min-w-[100px]"
                 >
@@ -99,10 +100,10 @@ export const StorageHeader: FC<StorageHeaderProps> = ({
               variant="default"
               size="sm"
               className="gap-2 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105 group min-w-[150px]"
-              onClick={onCreateVectorStore}
-              disabled={isCreatingVectorStore}
+              onClick={onCreateCollection} // Use renamed prop
+              disabled={isCreatingCollection} // Use renamed prop
             >
-              {isCreatingVectorStore ? 'Creating...' : 'Create Vector Store'}
+              {isCreatingCollection ? 'Creating...' : 'Create Collection'} {/* Updated button text */}
             </Button>
           )}
         </div>

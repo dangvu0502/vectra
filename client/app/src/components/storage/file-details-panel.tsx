@@ -9,23 +9,20 @@ interface FileDetails {
   size: string;
   createdAt: string;
   status: 'ready' | 'processing' | 'error';
-  vectorStores?: Array<{ id: string; name: string; }>;
+  collections?: Array<{ id: string; name: string; }>; // Renamed prop
 }
 
 interface FileDetailsPanelProps {
   file: FileDetails | null;
   onDelete: (id: string) => Promise<void>;
   isDeleting: boolean;
-  onCreateVectorStore?: (fileId: string) => Promise<void>;
-  isCreatingVectorStore?: boolean;
+  // Removed props related to creating vector stores as they don't seem relevant here
 }
 
-export const FileDetailsPanel: FC<FileDetailsPanelProps> = ({ 
-  file, 
-  onDelete, 
-  isDeleting,
-  onCreateVectorStore,
-  isCreatingVectorStore
+export const FileDetailsPanel: FC<FileDetailsPanelProps> = ({
+  file,
+  onDelete,
+  isDeleting
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -77,32 +74,34 @@ export const FileDetailsPanel: FC<FileDetailsPanelProps> = ({
         <span className="font-medium">{file.createdAt}</span>
       </DetailItem>
 
-      <DetailItem 
+      <DetailItem
         label={
           <div className="flex items-center gap-1">
-            Vector Store Usage
-            <Tooltip content="Vector stores that are using this file">
+            Collection Usage {/* Updated label */}
+            <Tooltip content="Collections that are using this file"> {/* Updated tooltip */}
               <HelpCircle size={14} className="text-muted-foreground hover:text-foreground transition-colors cursor-help" />
             </Tooltip>
           </div>
         }
       >
         <div className="space-y-1">
-          {file.vectorStores && file.vectorStores.length > 0 ? (
+          {/* Use renamed prop */}
+          {file.collections && file.collections.length > 0 ? (
             <div className="space-y-1">
-              {file.vectorStores.map(store => (
-                <div 
-                  key={store.id}
+              {/* Use renamed prop */}
+              {file.collections.map(collection => (
+                <div
+                  key={collection.id} // Use collection.id
                   className="text-xs text-muted-foreground hover:text-foreground transition-colors duration-200 flex items-center gap-2"
                 >
                   <span className="w-1.5 h-1.5 rounded-full bg-primary/50" />
-                  {store.name}
+                  {collection.name} {/* Use collection.name */}
                 </div>
               ))}
             </div>
           ) : (
             <span className="text-xs text-muted-foreground">
-              Not used in any vector stores
+              Not used in any collections {/* Updated text */}
             </span>
           )}
         </div>

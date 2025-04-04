@@ -11,7 +11,7 @@ interface Message {
 }
 
 interface KnowledgeSource {
-  type: 'file' | 'vectorStore' | null;
+  type: 'file' | 'collection' | null; // Added 'collection' type
   id: string | null;
   name: string | null;
 }
@@ -64,7 +64,9 @@ export function AppChat({ knowledgeSource }: AppChatProps) {
     setIsLoading(true);
 
     try {
+      // TODO: Update chat API call to handle 'collection' type if necessary
       const docId = knowledgeSource?.type === 'file' ? knowledgeSource.id! : undefined;
+      // Assuming for now the chat API only needs docId for 'file' type
       const response = await chat(inputValue, docId);
 
       const aiResponse: Message = {

@@ -3,21 +3,22 @@ import { AppLayout } from '@/components/ui/app-layout';
 import { FileList } from '@/components/storage/file-list';
 import { StorageHeader } from '@/components/storage/storage-header';
 import { FileDetailsPanel } from '@/components/storage/file-details-panel';
-import { VectorStoreList } from '@/components/storage/vector-store-list';
-import { VectorStoreDetailsPanel } from '@/components/storage/vector-store-details-panel';
+import { CollectionList } from '@/components/storage/collection-list'; // Renamed import
+import { CollectionDetailsPanel } from '@/components/storage/collection-details-panel'; // Renamed import
 import { useFileMutations, useFilesQuery } from '@/hooks/use-files-query';
 
 export const StoragePage: FC = () => {
-  const [activeTab, setActiveTab] = useState<'files' | 'vectorStores'>('files');
+  const [activeTab, setActiveTab] = useState<'files' | 'collections'>('files'); // Renamed tab state value
   const [selectedFile, setSelectedFile] = useState<string | null | undefined>(null);
-  const [selectedVectorStore, setSelectedVectorStore] = useState<string | null>(null);
+  const [selectedCollection, setSelectedCollection] = useState<string | null>(null); // Renamed state variable
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
-  const [isCreatingVectorStore, setIsCreatingVectorStore] = useState(false);
+  const [isCreatingCollection, setIsCreatingCollection] = useState(false); // Renamed state variable
   const [isCreatingMode, setIsCreatingMode] = useState(false);
 
-  const [vectorStores, setVectorStores] = useState<Array<{
+  // TODO: Replace mock data with actual collection data fetching (e.g., useCollectionsQuery)
+  const [collections, setCollections] = useState<Array<{ // Renamed state variable
     id: string;
     name: string;
     metadata: Record<string, any>;
@@ -26,9 +27,9 @@ export const StoragePage: FC = () => {
     fileCount?: number;
     lastUpdated?: string;
     usage?: string;
-  }>>([{
+  }>>([{ // Renamed state variable
     id: '1',
-    name: 'Default Store',
+    name: 'Default Collection', // Updated mock data name
     metadata: {},
     createdAt: new Date().toISOString(),
     size: '128 KB',
@@ -65,7 +66,7 @@ export const StoragePage: FC = () => {
         size: doc.size ? `${Math.round(parseFloat(doc.size) / 1024)} KB` : '65 KB', // Use dynamic size
         createdAt: new Date(doc.date).toLocaleString(),
         status: 'ready' as 'ready' | 'processing' | 'error',
-        vectorStores: [] // This will be populated with actual vector store data
+        collections: [] // Renamed property, This will be populated with actual collection data
       }
     ]) || []
   );
@@ -89,22 +90,23 @@ export const StoragePage: FC = () => {
 
   const selectedFileDetails = selectedFile ? fileDetails[selectedFile] : null;
 
-  const handleCreateVectorStore = async (data: {
+  // TODO: Implement actual collection creation logic using API
+  const handleCreateCollection = async (data: { // Renamed function
     name: string;
     description: string;
     similarityThreshold: number;
   }) => {
     try {
-      setIsCreatingVectorStore(true);
-      // TODO: Implement vector store creation API call
-      console.log('Creating vector store:', data);
+      setIsCreatingCollection(true); // Use renamed state setter
+      // TODO: Implement collection creation API call
+      console.log('Creating collection:', data); // Updated log message
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 1000));
       setIsCreatingMode(false);
     } catch (error) {
-      console.error('Failed to create vector store:', error);
+      console.error('Failed to create collection:', error); // Updated error message
     } finally {
-      setIsCreatingVectorStore(false);
+      setIsCreatingCollection(false); // Use renamed state setter
     }
   };
 
@@ -121,12 +123,12 @@ export const StoragePage: FC = () => {
           }}
           onUpload={handleUpload}
           isUploading={uploadMutation.isPending}
-          onCreateVectorStore={async () => {
+          onCreateCollection={async () => { // Renamed prop
             setIsCreatingMode(true);
-            setSelectedVectorStore(null);
+            setSelectedCollection(null); // Use renamed state setter
             return Promise.resolve();
           }}
-          isCreatingVectorStore={isCreatingVectorStore}
+          isCreatingCollection={isCreatingCollection} // Renamed prop
         />
         
         <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
@@ -149,10 +151,10 @@ export const StoragePage: FC = () => {
                 />
               )
             ) : (
-              <VectorStoreList
-                vectorStores={vectorStores}
-                selectedVectorStore={selectedVectorStore}
-                onVectorStoreSelect={(vectorStore) => setSelectedVectorStore(vectorStore.id)}
+              <CollectionList // Use renamed component
+                collections={collections} // Use renamed prop and state variable
+                selectedCollection={selectedCollection} // Use renamed prop and state variable
+                onCollectionSelect={(collection) => setSelectedCollection(collection.id)} // Use renamed prop and state setter
                 className="min-h-[300px]"
               />
             )}
@@ -167,17 +169,17 @@ export const StoragePage: FC = () => {
               />
             ) : null
           ) : (
-            <VectorStoreDetailsPanel
-              vectorStore={selectedVectorStore ? {
-                id: selectedVectorStore,
+            <CollectionDetailsPanel // Use renamed component
+              collection={selectedCollection ? { // Use renamed prop and state variable
+                id: selectedCollection, // Use renamed state variable
                 metadata: {},
                 createdAt: new Date().toISOString()
               } : undefined}
-              onDelete={async () => {}}
-              isDeleting={false}
+              onDelete={async () => {}} // TODO: Implement collection deletion
+              isDeleting={false} // TODO: Add state for deletion status
               isCreating={isCreatingMode}
-              onCreate={handleCreateVectorStore}
-              isCreatingStore={isCreatingVectorStore}
+              onCreate={handleCreateCollection} // Use renamed handler
+              isCreatingCollection={isCreatingCollection} // Use renamed prop and state variable
             />
           )}
         </div>
