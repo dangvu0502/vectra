@@ -1,10 +1,10 @@
 import { FC, useState } from 'react';
 import { AppLayout } from '@/components/ui/app-layout';
-import { FileList } from '@/components/storage/file-list';
-import { StorageHeader } from '@/components/storage/storage-header';
-import { FileDetailsPanel } from '@/components/storage/file-details-panel';
-import { CollectionList } from '@/components/storage/collection-list'; // Renamed import
-import { CollectionDetailsPanel } from '@/components/storage/collection-details-panel'; // Renamed import
+import { FileList } from '@/components/features/storage/file-list';
+import { StorageHeader } from '@/components/features/storage/storage-header';
+import { FileDetailsPanel } from '@/components/features/storage/file-details-panel';
+import { CollectionList } from '@/components/features/storage/collection-list'; // Renamed import
+import { CollectionDetailsPanel } from '@/components/features/storage/collection-details-panel'; // Renamed import
 import { useFileMutations, useFilesQuery } from '@/hooks/use-files-query';
 
 export const StoragePage: FC = () => {

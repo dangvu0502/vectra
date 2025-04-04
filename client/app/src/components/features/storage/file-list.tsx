@@ -2,7 +2,7 @@ import { FC, useState } from 'react';
 import { FileText, Image, Video, Music, FileQuestion, MessageSquare } from 'lucide-react';
 import { Table } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { ChatWindow } from '@/components/chat/chat-window';
+import { ChatWindow } from '@/components/shared/chat-window';
 import { Tooltip } from '@/components/ui/tooltip';
 
 const getFileIcon = (type: string) => {

@@ -11,7 +11,7 @@ import {
 import { SidebarItem } from "./sidebar-item";
 import { Switch } from "./switch";
 import { UserAvatar } from "./user-avatar";
-import { AuthModal } from "@/components/features/auth-modal";
+import { AuthModal } from "@/components/features/auth/auth-modal";
 import { useAuth } from "@/hooks/use-auth";
 
 interface SidebarProps {
