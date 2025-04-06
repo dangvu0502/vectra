@@ -41,11 +41,6 @@ class FileController {
         return void res.status(400).json({ message: 'No file uploaded' });
       }
 
-      // Basic mimetype check example (can be expanded)
-      // switch (req.file.mimetype) {
-      //   // Add allowed types
-      // }
-
       const content = await fs.readFile(req.file.path, 'utf-8');
       const user = req.user as UserProfile; // Assuming auth middleware adds user
 
@@ -110,11 +105,6 @@ class FileController {
     try {
       const { id } = IdParamSchema.parse(req.params); // Validate ID format
       // TODO: Add user ownership check here before deleting
-      // const user = req.user as UserProfile;
-      // const file = await this.fileService.findById(id);
-      // if (!file || file.user_id !== user.id) {
-      //   throw new FileNotFoundError(id); // Or ForbiddenError
-      // }
       await this.fileService.delete(id);
       res.status(204).send(); // No content on success
     } catch (error) {

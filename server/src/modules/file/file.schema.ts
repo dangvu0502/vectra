@@ -7,12 +7,10 @@ export const fileSchema = z.object({
   path: z.string().min(1),
   content: z.string(),
   user_id: z.string().uuid(),
-  // collection_id: z.string().uuid().nullable(), // Removed - Handled by join table
   metadata: z.object({
     originalSize: z.number(),
     mimeType: z.string(),
     embeddingsCreated: z.boolean().default(false),
-    // Preprocess to handle string dates from JSONB
     embeddingsTimestamp: z.preprocess((arg) => {
       if (typeof arg === 'string') {
         try {
@@ -25,7 +23,6 @@ export const fileSchema = z.object({
     }, z.date().optional()),
     embeddingError: z.string().optional()
   }),
-  // Preprocess created_at/updated_at if they might come from DB as strings
   created_at: z.preprocess((arg) => {
     if (typeof arg === 'string') {
       try {
@@ -60,6 +57,3 @@ export const querySchema = z.object({
 }).strict();
 
 export type QueryOptions = z.infer<typeof querySchema>;
-
-// Removed Database table name
-// export const FILES_TABLE = 'files';

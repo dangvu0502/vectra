@@ -159,10 +159,6 @@ const COLLECTION_FILES_TABLE = 'collection_files'; // Keep for findCollectionsBy
  * @param fileId - The ID of the file.
  * @param collectionId - The ID of the collection.
  * @param trx - Optional transaction object.
-/* --- REMOVED Queries ---
-export const addFileToCollectionLinkQuery = ...
-export const removeFileFromCollectionLinkQuery = ...
-export const findFilesByCollectionIdQuery = ...
 */
 
 /**
@@ -174,7 +170,6 @@ export const findFilesByCollectionIdQuery = ...
  * @returns An array of collection records (you might need to import Collection type).
  */
 // Assuming Collection type is available or imported
-// import type { Collection } from '@/modules/collections/collections.types';
 export const findCollectionsByFileIdQuery = async (
   fileId: string,
   userId: string,
