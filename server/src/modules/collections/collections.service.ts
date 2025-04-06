@@ -10,7 +10,7 @@ import {
   CollectionConflictError,
   FileNotFoundError, // Import FileNotFoundError
   ForbiddenError,    // Import ForbiddenError
-} from '@/modules/core/errors';
+} from '@/shared/errors';
 import { findFileByIdQuery } from '@/modules/file/file.queries'; // Import file query for ownership check
 import type { File as DbFileType } from '@/modules/file/file.schema'; // Import File type
 

@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import fs from 'fs/promises';
 import { z } from 'zod';
-import { FileNotFoundError, ForbiddenError } from '@/modules/core/errors'; // Import ForbiddenError
+import { FileNotFoundError, ForbiddenError } from '@/shared/errors'; // Import ForbiddenError
 import type { IFileService } from './file.service';
 import { fileService } from './file.service';
 import { fileSchema, querySchema, type File as DbFileType } from './file.schema';

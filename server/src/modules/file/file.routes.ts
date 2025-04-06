@@ -1,5 +1,5 @@
 import { fileController } from '@/modules/file';
-import { DEFAULT_CONFIG } from '@/modules/core/config';
+import { DEFAULT_CONFIG } from '@/shared/config';
 import { Router } from 'express';
 import multer from 'multer';
 import { ensureAuthenticated } from '@/modules/collections/collections.controller'; // Import auth middleware

@@ -2,9 +2,9 @@ import fs from 'fs/promises';
 import type { Knex } from 'knex';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import { FileConfig } from '../core/config'; // Assuming this config is still relevant for uploads
+import { FileConfig } from '@/modules/file/config'; // Updated path for FileConfig
 import { db } from '@/database/connection';
-import { FileNotFoundError, CollectionNotFoundError, ForbiddenError } from '@/modules/core/errors';
+import { FileNotFoundError, CollectionNotFoundError, ForbiddenError } from '@/shared/errors'; // Updated path for errors
 import { querySchema, type File as DbFileType, type QueryOptions } from './file.schema';
 import { EmbeddingService, type IEmbeddingService } from './file.embedding.service';
 // Import the specific query needed for linking and the Collection type

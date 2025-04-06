@@ -13,7 +13,7 @@ import {
   CollectionConflictError,
   FileNotFoundError, // Import other needed errors
   ForbiddenError
-} from '@/modules/core/errors';
+} from '@/shared/errors';
 import { TEST_USER_ID } from '@/config/constants';
 import { z } from 'zod'; // Import Zod for validation
 import { db } from '@/database/connection'; // Import the database connection instance

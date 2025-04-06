@@ -46,7 +46,7 @@ export class CollectionConflictError extends CollectionError {
     super(`A collection with the name "${name}" already exists.`);
     this.name = 'CollectionConflictError';
   }
-} // Removed extra brace
+}
 
 // General App Errors
 export class AppError extends Error {
