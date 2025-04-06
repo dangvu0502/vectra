@@ -3,7 +3,6 @@
 // Database Table Names
 export const FILES_TABLE = 'files';
 export const TEXT_EMBEDDINGS_TABLE = 'text_embeddings';
-export const KNOWLEDGE_METADATA_INDEX_TABLE = 'knowledge_metadata_index';
 export const COLLECTIONS_TABLE = 'collections';
 
 // API Configuration

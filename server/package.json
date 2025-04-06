@@ -11,8 +11,10 @@
     "migrate:down": "node --env-file=.env --import @swc-node/register/esm-register ./node_modules/knex/bin/cli.js migrate:down",
     "seed:make": "node --env-file=.env --import @swc-node/register/esm-register ./node_modules/knex/bin/cli.js seed:make",
     "seed:run": "node --env-file=.env --import @swc-node/register/esm-register ./node_modules/knex/bin/cli.js seed:run",
-    "db:setup": "pnpm run migrate:latest && pnpm run seed:run",
-    "db:reset": "pnpm run migrate:rollback && pnpm run migrate:latest && pnpm run seed:run"
+    "db:setup": "pnpm run db:orchestrate && pnpm run seed:run",
+    "db:reset": "pnpm run db:delete:force && pnpm run db:orchestrate && pnpm run seed:run",
+    "db:orchestrate": "node --env-file=.env --import @swc-node/register/esm-register ./src/database/scripts/orchestrate-db.ts",
+    "db:delete:force": "node --env-file=.env --import @swc-node/register/esm-register ./src/database/scripts/force-delete-db.ts --force"
   },
   "dependencies": {
     "@ai-sdk/openai": "^1.2.5",

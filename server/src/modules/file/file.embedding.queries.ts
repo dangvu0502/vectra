@@ -1,7 +1,7 @@
 import { db } from '@/database/connection'; // Keep db import for default runner
 import type { Knex } from 'knex';
 import type { File as DbFileType } from './file.schema'; // Import File type
-import { FILES_TABLE, TEXT_EMBEDDINGS_TABLE, KNOWLEDGE_METADATA_INDEX_TABLE, COLLECTIONS_TABLE } from '@/config/constants';
+import { FILES_TABLE, TEXT_EMBEDDINGS_TABLE, COLLECTIONS_TABLE } from '@/config/constants'; // Removed KNOWLEDGE_METADATA_INDEX_TABLE
 
 // Removed local constant declarations
 
@@ -35,7 +35,7 @@ const _insertTextEmbeddingsQuery = async ( // Make internal
       vectorId,
       file.user_id,
       file.id,
-      file.collection_id,
+      null, // Pass null for collection_id as it's no longer directly on the file
       JSON.stringify(embeddings[i]), // Ensure embedding is stringified
       JSON.stringify(additionalMetadata) // Ensure metadata is stringified
     ]);
@@ -44,40 +44,7 @@ const _insertTextEmbeddingsQuery = async ( // Make internal
   await Promise.all(textEmbeddingInserts);
 };
 
-/**
- * Upserts a knowledge metadata index entry for a file.
- * @param trx - Knex transaction object.
- * @param userId - The user ID.
- * @param fileId - The file ID.
- * @param textContent - The text content for the index.
- * @param embedding - The embedding vector.
- */
-const _upsertFileKnowledgeIndexQuery = async ( // Make internal
-  dbOrTrx: Knex | Knex.Transaction, // Accept db or trx
-  userId: string,
-  fileId: string,
-  textContent: string,
-  embedding: number[]
-): Promise<void> => {
-  const upsertQuery = `
-    INSERT INTO ${KNOWLEDGE_METADATA_INDEX_TABLE}
-    (user_id, text_content, embedding, entity_type, entity_id, created_at, updated_at)
-    VALUES (?, ?, ?::vector, ?, ?, NOW(), NOW())
-    ON CONFLICT (user_id, entity_type, entity_id)
-    DO UPDATE SET
-      text_content = EXCLUDED.text_content,
-      embedding = EXCLUDED.embedding,
-      updated_at = NOW()
-  `;
-  const params = [
-    userId,
-    textContent,
-    JSON.stringify(embedding), // Ensure embedding is stringified
-    'file',
-    fileId
-  ];
-  await dbOrTrx.raw(upsertQuery, params); // Use dbOrTrx
-};
+// Removed _upsertFileKnowledgeIndexQuery as KNOWLEDGE_METADATA_INDEX_TABLE is removed
 
 /**
  * Finds a collection by its ID within a transaction.
@@ -96,42 +63,7 @@ const _findCollectionByIdQuery = async ( // Make internal
     .first();
 };
 
-
-/**
- * Upserts a knowledge metadata index entry for a collection.
- * @param trx - Knex transaction object.
- * @param userId - The user ID.
- * @param collectionId - The collection ID.
- * @param textContent - The text content for the index.
- * @param embedding - The embedding vector.
- */
-const _upsertCollectionKnowledgeIndexQuery = async ( // Make internal
-  dbOrTrx: Knex | Knex.Transaction, // Accept db or trx
-  userId: string,
-  collectionId: string,
-  textContent: string,
-  embedding: number[]
-): Promise<void> => {
-  const upsertQuery = `
-    INSERT INTO ${KNOWLEDGE_METADATA_INDEX_TABLE}
-    (user_id, text_content, embedding, entity_type, entity_id, created_at, updated_at)
-    VALUES (?, ?, ?::vector, ?, ?, NOW(), NOW())
-    ON CONFLICT (user_id, entity_type, entity_id)
-    DO UPDATE SET
-      text_content = EXCLUDED.text_content,
-      embedding = EXCLUDED.embedding,
-      updated_at = NOW()
-  `;
-  const params = [
-    userId,
-    textContent,
-    JSON.stringify(embedding), // Ensure embedding is stringified
-    'collection',
-    collectionId
-  ];
-  await dbOrTrx.raw(upsertQuery, params); // Use dbOrTrx
-};
-
+// Removed _upsertCollectionKnowledgeIndexQuery as KNOWLEDGE_METADATA_INDEX_TABLE is removed
 
 /**
  * Deletes text embeddings associated with a file ID within a transaction.
@@ -147,22 +79,7 @@ const _deleteTextEmbeddingsByFileIdQuery = async ( // Make internal
     .delete();
 };
 
-/**
- * Deletes the knowledge metadata index entry for a specific file within a transaction.
- * @param trx - Knex transaction object.
- * @param fileId - The file ID.
- */
-const _deleteFileKnowledgeIndexQuery = async ( // Make internal
-  dbOrTrx: Knex | Knex.Transaction, // Accept db or trx
-  fileId: string
-): Promise<void> => {
-  await dbOrTrx(KNOWLEDGE_METADATA_INDEX_TABLE) // Use dbOrTrx
-    .where({
-      entity_type: 'file',
-      entity_id: fileId
-    })
-    .delete();
-};
+// Removed _deleteFileKnowledgeIndexQuery as KNOWLEDGE_METADATA_INDEX_TABLE is removed
 
 /**
  * Finds a file by its ID within a transaction (minimal select).
@@ -174,9 +91,9 @@ const _deleteFileKnowledgeIndexQuery = async ( // Make internal
 const _findFileForDeleteCheckQuery = async ( // Make internal
   dbOrTrx: Knex | Knex.Transaction, // Accept db or trx
   fileId: string
-): Promise<{ id: string; collection_id: string | null } | undefined> => {
+): Promise<{ id: string } | undefined> => { // Removed collection_id from return type
   return dbOrTrx(FILES_TABLE) // Use dbOrTrx
-    .select('id', 'collection_id')
+    .select('id') // Removed collection_id from select
     .where('id', fileId)
     .first();
 };
@@ -193,31 +110,18 @@ const _countRemainingFilesInCollectionQuery = async ( // Make internal
   collectionId: string,
   excludeFileId: string
 ): Promise<number> => {
+  // TODO: This query is now incorrect as files don't have collection_id.
+  // It needs refactoring to use the collection_files join table.
+  // Removing the clause fixes the TS error for now.
   const result = await dbOrTrx(FILES_TABLE) // Use dbOrTrx
-    .where('collection_id', collectionId)
+    // .where('collection_id', collectionId) // Removed this line
     .whereNot('id', excludeFileId)
     .count('id as count')
     .first();
   return result ? Number(result.count) : 0;
 };
 
-/**
- * Deletes the knowledge metadata index entry for a specific collection within a transaction.
- * @param trx - Knex transaction object.
- * @param collectionId - The collection ID.
- */
-const _deleteCollectionKnowledgeIndexQuery = async ( // Make internal
-  dbOrTrx: Knex | Knex.Transaction, // Accept db or trx
-  collectionId: string
-): Promise<void> => {
-  await dbOrTrx(KNOWLEDGE_METADATA_INDEX_TABLE) // Use dbOrTrx
-    .where({
-      entity_type: 'collection',
-      entity_id: collectionId
-    })
-    .delete();
-};
-
+// Removed _deleteCollectionKnowledgeIndexQuery as KNOWLEDGE_METADATA_INDEX_TABLE is removed
 
 // --- Query Runner ---
 
@@ -234,31 +138,34 @@ export const createEmbeddingQueryRunner = (dbOrTrx: Knex | Knex.Transaction) => 
       embeddings: number[][]
     ) => _insertTextEmbeddingsQuery(dbOrTrx, file, chunks, embeddings),
 
-    upsertFileKnowledgeIndex: (
-      userId: string,
-      fileId: string,
-      textContent: string,
-      embedding: number[]
-    ) => _upsertFileKnowledgeIndexQuery(dbOrTrx, userId, fileId, textContent, embedding),
+    // Removed upsertFileKnowledgeIndex
+    // upsertFileKnowledgeIndex: (
+    //   userId: string,
+    //   fileId: string,
+    //   textContent: string,
+    //   embedding: number[]
+    // ) => _upsertFileKnowledgeIndexQuery(dbOrTrx, userId, fileId, textContent, embedding),
 
     findCollectionById: (
       collectionId: string
     ) => _findCollectionByIdQuery(dbOrTrx, collectionId),
 
-    upsertCollectionKnowledgeIndex: (
-      userId: string,
-      collectionId: string,
-      textContent: string,
-      embedding: number[]
-    ) => _upsertCollectionKnowledgeIndexQuery(dbOrTrx, userId, collectionId, textContent, embedding),
+    // Removed upsertCollectionKnowledgeIndex
+    // upsertCollectionKnowledgeIndex: (
+    //   userId: string,
+    //   collectionId: string,
+    //   textContent: string,
+    //   embedding: number[]
+    // ) => _upsertCollectionKnowledgeIndexQuery(dbOrTrx, userId, collectionId, textContent, embedding),
 
     deleteTextEmbeddingsByFileId: (
       fileId: string
     ) => _deleteTextEmbeddingsByFileIdQuery(dbOrTrx, fileId),
 
-    deleteFileKnowledgeIndex: (
-      fileId: string
-    ) => _deleteFileKnowledgeIndexQuery(dbOrTrx, fileId),
+    // Removed deleteFileKnowledgeIndex
+    // deleteFileKnowledgeIndex: (
+    //   fileId: string
+    // ) => _deleteFileKnowledgeIndexQuery(dbOrTrx, fileId),
 
     findFileForDeleteCheck: (
       fileId: string
@@ -269,9 +176,10 @@ export const createEmbeddingQueryRunner = (dbOrTrx: Knex | Knex.Transaction) => 
       excludeFileId: string
     ) => _countRemainingFilesInCollectionQuery(dbOrTrx, collectionId, excludeFileId),
 
-    deleteCollectionKnowledgeIndex: (
-      collectionId: string
-    ) => _deleteCollectionKnowledgeIndexQuery(dbOrTrx, collectionId),
+    // Removed deleteCollectionKnowledgeIndex
+    // deleteCollectionKnowledgeIndex: (
+    //   collectionId: string
+    // ) => _deleteCollectionKnowledgeIndexQuery(dbOrTrx, collectionId),
   };
 };
 

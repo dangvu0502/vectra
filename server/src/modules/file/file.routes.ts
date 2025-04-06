@@ -10,6 +10,10 @@ const upload = multer({
     limits: { fileSize: DEFAULT_CONFIG.maxFileSize },
 });
 
+
+// Apply authentication middleware to all routes
+router.use(ensureAuthenticated);
+
 // Pass next to controller methods
 router.post('/upload', upload.single('file'), (req, res, next) => {
     return fileController.upload(req, res, next);

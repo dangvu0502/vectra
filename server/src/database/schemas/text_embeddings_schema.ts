@@ -24,7 +24,6 @@ export const text_embeddings_schema = {
           vector_id TEXT NOT NULL,
           user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
           file_id UUID NOT NULL REFERENCES files(id) ON DELETE CASCADE,
-          collection_id UUID REFERENCES collections(id) ON DELETE SET NULL,
           embedding VECTOR(${VECTOR_DIMENSION}) NOT NULL,
           metadata JSONB NOT NULL,
           created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -44,7 +43,6 @@ export const text_embeddings_schema = {
       // Add indexes for efficient filtering
       await knex.raw(`CREATE INDEX ${TABLE_NAME}_user_id_idx ON ${TABLE_NAME} (user_id);`);
       await knex.raw(`CREATE INDEX ${TABLE_NAME}_file_id_idx ON ${TABLE_NAME} (file_id);`);
-      await knex.raw(`CREATE INDEX ${TABLE_NAME}_collection_id_idx ON ${TABLE_NAME} (collection_id);`);
       
       // Add GIN index for metadata querying
       await knex.raw(`CREATE INDEX ${TABLE_NAME}_metadata_gin_idx ON ${TABLE_NAME} USING GIN (metadata);`);

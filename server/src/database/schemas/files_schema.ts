@@ -12,8 +12,6 @@ export const files_schema = {
         table.string('filename').notNullable();
         table.string('path').notNullable();
         table.text('content').notNullable();
-        // Remove the direct foreign key to collections
-        // table.uuid('collection_id').references('collections.id').onDelete('SET NULL');
         table.uuid('user_id').notNullable().references('users.id').onDelete('CASCADE');
         table.jsonb('metadata').notNullable();
         table.timestamps(true, true);

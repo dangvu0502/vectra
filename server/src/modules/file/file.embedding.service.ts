@@ -54,7 +54,7 @@ export class EmbeddingService implements IEmbeddingService {
       const doc = MDocument.fromText(file.content, {
         user_id: file.user_id,
         file_id: file.id,
-        collection_id: file.collection_id,
+        // collection_id: file.collection_id, // Removed - No longer directly on file
         filename: file.filename,
         created_at: file.created_at.toISOString(),
         ...(file.metadata || {}),
@@ -89,49 +89,29 @@ export class EmbeddingService implements IEmbeddingService {
         await txRunner.insertTextEmbeddings(file, chunks, embeddings);
         // console.log(`Inserted ${chunks.length} embeddings into ${TEXT_EMBEDDINGS_TABLE} for file ${file.id}`);
 
-      // Always update the knowledge_metadata_index for the file itself
-      try {
-        // Create text for file metadata embedding using filename and first chunk
-        const firstChunkText = chunks[0]?.text || ''; // Get text of the first chunk, handle if no chunks
-        const fileText = `Filename: ${file.filename}\n\n${firstChunkText}`; // Use filename + first chunk
-        // console.log(`[EmbeddingService] Generating metadata embedding for file ${file.id} using text (first 100 chars): "${fileText.substring(0, 100)}..."`);
+      // Removed the try...catch block for upserting file knowledge index as the function is removed
+      // try {
+      //   // Create text for file metadata embedding using filename and first chunk
+      //   const firstChunkText = chunks[0]?.text || ''; // Get text of the first chunk, handle if no chunks
+      //   const fileText = `Filename: ${file.filename}\n\n${firstChunkText}`; // Use filename + first chunk
+      //   // console.log(`[EmbeddingService] Generating metadata embedding for file ${file.id} using text (first 100 chars): "${fileText.substring(0, 100)}..."`);
+      //
+      //   const { embeddings: fileEmbeddings } = await embedMany({
+      //     model: openai.embedding('text-embedding-3-small'),
+      //     values: [fileText]
+      //   });
+      //   const fileEmbedding = fileEmbeddings[0];
+      //
+      //   // Upsert file knowledge index using the transaction runner
+      //   await txRunner.upsertFileKnowledgeIndex(file.user_id, file.id, fileText, fileEmbedding); // This line is removed
+      //   // console.log(`[EmbeddingService] Successfully updated knowledge metadata index for file ${file.id}`);
+      // } catch (error) {
+      //   console.error(`[EmbeddingService] Error updating knowledge metadata index for file ${file.id}:`, error);
+      // }
 
-        const { embeddings: fileEmbeddings } = await embedMany({
-          model: openai.embedding('text-embedding-3-small'),
-          values: [fileText]
-        });
-        const fileEmbedding = fileEmbeddings[0];
+      // Removed logic to update collection knowledge index here.
+      // This should be handled separately, perhaps when collections are explicitly updated or queried.
 
-        // Upsert file knowledge index using the transaction runner
-        await txRunner.upsertFileKnowledgeIndex(file.user_id, file.id, fileText, fileEmbedding);
-        // console.log(`[EmbeddingService] Successfully updated knowledge metadata index for file ${file.id}`);
-      } catch (error) {
-        console.error(`[EmbeddingService] Error updating knowledge metadata index for file ${file.id}:`, error);
-      }
-
-      // If this is a collection file, also update the knowledge_metadata_index for the collection
-      if (file.collection_id) {
-        // Find collection using the transaction runner
-        const collection = await txRunner.findCollectionById(file.collection_id);
-
-        if (collection) {
-          const collectionText = `Collection: ${collection.name}. ${collection.description || ''}`;
-          const { embeddings: collectionEmbeddings } = await embedMany({
-            model: openai.embedding('text-embedding-3-small'),
-            values: [collectionText]
-          });
-          const collectionEmbedding = collectionEmbeddings[0];
-
-          try {
-            // Upsert collection knowledge index using the transaction runner
-            await txRunner.upsertCollectionKnowledgeIndex(file.user_id, collection.id, collectionText, collectionEmbedding);
-            // console.log(`[EmbeddingService] Successfully updated knowledge metadata index for collection ${collection.id}`);
-          } catch (error) {
-            console.error(`[EmbeddingService] Error updating knowledge metadata index for collection ${collection.id}:`, error);
-            throw error; // Re-throw error for collection indexing failure
-          }
-        }
-      }
       });
 
       // console.log(`Successfully processed and embedded file ${file.id}`);
@@ -153,22 +133,12 @@ export class EmbeddingService implements IEmbeddingService {
         // Delete text embeddings using the transaction runner
         await txRunner.deleteTextEmbeddingsByFileId(fileId);
 
-        // Delete file knowledge index using the transaction runner
-        await txRunner.deleteFileKnowledgeIndex(fileId);
+        // Removed call to deleteFileKnowledgeIndex as the function is removed
+        // await txRunner.deleteFileKnowledgeIndex(fileId);
 
-        // Check if we need to update knowledge_metadata_index for the collection
-        // Find file using the transaction runner
-        const file = await txRunner.findFileForDeleteCheck(fileId);
-        if (file && file.collection_id) {
-          // Count remaining files using the transaction runner
-          const remainingFilesCount = await txRunner.countRemainingFilesInCollection(file.collection_id, fileId);
+        // Removed logic that checked for collection_id and potentially deleted collection knowledge index.
+        // This logic needs to be handled elsewhere due to the many-to-many relationship.
 
-          if (remainingFilesCount === 0) {
-            // Delete collection knowledge index using the transaction runner
-            await txRunner.deleteCollectionKnowledgeIndex(file.collection_id);
-            // console.log(`Removed collection ${file.collection_id} from knowledge metadata index`);
-          }
-        }
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';

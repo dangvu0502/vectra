@@ -7,7 +7,7 @@ export const fileSchema = z.object({
   path: z.string().min(1),
   content: z.string(),
   user_id: z.string().uuid(),
-  collection_id: z.string().uuid().nullable(),
+  // collection_id: z.string().uuid().nullable(), // Removed - Handled by join table
   metadata: z.object({
     originalSize: z.number(),
     mimeType: z.string(),
