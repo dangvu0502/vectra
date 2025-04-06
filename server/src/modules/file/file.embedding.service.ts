@@ -11,10 +11,37 @@ import { createEmbeddingQueryRunner } from './file.embedding.queries';
 const DEFAULT_CHUNK_SIZE = 1000;
 const DEFAULT_OVERLAP_SIZE = 200;
 
+// Helper function to parse Markdown headings (## or more)
+function parseHeadings(content: string): Array<{ title: string; index: number }> {
+  const headings: Array<{ title: string; index: number }> = [];
+  const headingRegex = /^(#{2,})\s+(.*)/gm; // Match lines starting with ##, ###, etc.
+  let match;
+  while ((match = headingRegex.exec(content)) !== null) {
+    headings.push({
+      title: match[2].trim(), // The heading text
+      index: match.index,     // Starting character index of the heading line
+    });
+  }
+  return headings;
+}
+
+import { embed } from 'ai'; // Import embed for single query embedding
+
 // Interface defining the service's responsibilities
 export interface IEmbeddingService {
   processFile(file: DbFileType): Promise<void>;
   deleteFileEmbeddings(fileId: string): Promise<void>;
+  queryEmbeddings(params: {
+    userId: string;
+    queryText: string;
+    limit: number;
+    collectionId?: string;
+  }): Promise<Array<{
+    vector_id: string;
+    file_id: string;
+    metadata: Record<string, any>;
+    distance: number;
+  }>>;
 }
 
 export class EmbeddingService implements IEmbeddingService {
@@ -62,6 +89,10 @@ export class EmbeddingService implements IEmbeddingService {
         overlapSize: this.options.overlapSize,
       });
 
+      // 1. Parse headings before chunking
+      const headings = parseHeadings(file.content);
+
+      // 2. Chunk the document
       const chunks = await doc.chunk();
       if (!chunks || chunks.length === 0) {
         console.warn(`No chunks generated for file ${file.id}`);
@@ -69,7 +100,34 @@ export class EmbeddingService implements IEmbeddingService {
       }
       // console.log(`Generated ${chunks.length} chunks for file ${file.id}`);
 
-      // Generate embeddings using embedMany from 'ai'
+      // 3. Enrich chunk metadata with section titles
+      let lastFoundIndex = -1; // To optimize search in content
+      chunks.forEach(chunk => {
+        // Find approximate start index of chunk text in original content
+        // Note: This is a simple search and might be inaccurate if chunk text repeats exactly.
+        const chunkStartIndex = file.content.indexOf(chunk.text, lastFoundIndex + 1);
+        if (chunkStartIndex !== -1) {
+          lastFoundIndex = chunkStartIndex;
+          // Find the last heading that occurred before this chunk's start index
+          let relevantHeading = 'Unknown Section'; // Default
+          for (let i = headings.length - 1; i >= 0; i--) {
+            if (headings[i].index <= chunkStartIndex) {
+              relevantHeading = headings[i].title;
+              break;
+            }
+          }
+          // Add section_title to metadata (initialize if metadata doesn't exist)
+          chunk.metadata = chunk.metadata || {};
+          chunk.metadata.section_title = relevantHeading;
+        } else {
+           // Handle case where chunk text isn't found (might happen with overlap/splitting)
+           chunk.metadata = chunk.metadata || {};
+           chunk.metadata.section_title = 'Unknown Section (Chunk text not found)';
+           console.warn(`Could not find start index for chunk in file ${file.id}`);
+        }
+      });
+
+      // 4. Generate embeddings using embedMany from 'ai'
       const texts = chunks.map(chunk => chunk.text);
       const { embeddings } = await embedMany({
         model: openai.embedding('text-embedding-3-small'),
@@ -144,6 +202,46 @@ export class EmbeddingService implements IEmbeddingService {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error(`Error deleting embeddings for file ${fileId}: ${errorMessage}`);
       throw new Error(`Failed to delete embeddings for file ${fileId}: ${errorMessage}`);
+    }
+  }
+
+  async queryEmbeddings({ userId, queryText, limit, collectionId }: {
+    userId: string;
+    queryText: string;
+    limit: number;
+    collectionId?: string;
+  }): Promise<Array<{
+    vector_id: string;
+    file_id: string;
+    metadata: Record<string, any>;
+    distance: number;
+  }>> {
+    try {
+      // console.log(`Querying embeddings for user ${userId} with text: "${queryText.substring(0, 50)}..."`);
+
+      // Embed the query text
+      const { embedding } = await embed({
+        model: openai.embedding('text-embedding-3-small'),
+        value: queryText,
+      });
+
+      if (!embedding) {
+        throw new Error('Failed to generate embedding for query text.');
+      }
+
+      // Use the default DB connection runner for querying
+      // (Could also use transactions if needed within a larger operation)
+      const runner = createEmbeddingQueryRunner(this.db);
+      const results = await runner.findSimilarEmbeddings(userId, embedding, limit, collectionId);
+
+      // console.log(`Found ${results.length} similar embeddings.`);
+      return results;
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error(`Error querying embeddings for user ${userId}: ${errorMessage}`);
+      // Consider throwing a more specific error type if needed
+      throw new Error(`Failed to query embeddings: ${errorMessage}`);
     }
   }
 }

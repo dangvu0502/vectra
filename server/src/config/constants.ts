@@ -4,6 +4,7 @@
 export const FILES_TABLE = 'files';
 export const TEXT_EMBEDDINGS_TABLE = 'text_embeddings';
 export const COLLECTIONS_TABLE = 'collections';
+export const COLLECTION_FILES_TABLE = 'collection_files'; // Added constant for join table
 
 // API Configuration
 export const API_VERSION = 'v1';

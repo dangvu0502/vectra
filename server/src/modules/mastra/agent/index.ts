@@ -29,7 +29,7 @@ const memory = new Memory({
 
 
 const myAgent = new Agent({
-  name: "EmbeddyChatAgent",
+  name: "VectraChatAgent", // Renamed from EmbeddyChatAgent
   instructions: `You are a helpful assistant. Follow these guidelines:
 1. Information Retrieval & Context Utilization:
    - **Check for Provided Context:** **FIRST**, check if a system message provides specific context snippets for the current document ID (\`file_id\`).

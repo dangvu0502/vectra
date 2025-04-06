@@ -1,5 +1,5 @@
 {
-  "name": "querycub",
+  "name": "vectra",
   "private": true,
   "scripts": {
     "dev": "concurrently \"pnpm:dev:server\" \"pnpm:dev:client\" --names \"[server],[client]\" --prefix-colors \"blue.bold,green.bold\" --prefix \"{name}\"",

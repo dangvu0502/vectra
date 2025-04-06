@@ -16,8 +16,16 @@ import {
 } from '@/modules/core/errors';
 import { TEST_USER_ID } from '@/config/constants';
 import { z } from 'zod'; // Import Zod for validation
+import { db } from '@/database/connection'; // Import the database connection instance
+// Import the embedding service instance
+import { EmbeddingService } from '@/modules/file/file.embedding.service';
+const embeddingService = EmbeddingService.getInstance(db); // Use the imported db instance
 
 // Define Zod schemas here or import from types.ts if defined there
+const QueryCollectionBodySchema = z.object({
+  queryText: z.string().min(1, "Query text cannot be empty"),
+  limit: z.number().int().positive().optional().default(10), // Default limit
+});
 const AddFileToCollectionParamsSchema = z.object({
   collectionId: z.string().uuid("Invalid Collection ID format"),
 });
@@ -221,6 +229,39 @@ export const collectionsController = {
          return void res.status(403).json({ message: error.message });
        }
       next(error);
+    }
+  },
+
+  // POST /collections/:collectionId/query - Query embeddings within a collection
+  async queryCollection(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { collectionId } = CollectionIdParamSchema.parse(req.params);
+      const { queryText, limit } = QueryCollectionBodySchema.parse(req.body);
+      const user = req.user as UserProfile;
+
+      // Call the embedding service to perform the query
+      const results = await embeddingService.queryEmbeddings({
+        userId: user.id,
+        queryText,
+        limit,
+        collectionId, // Pass the collection ID for filtering
+      });
+
+      res.status(200).json({
+        status: 'success',
+        data: { results }
+      });
+
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return void res.status(400).json({ message: 'Invalid request data', errors: error.errors });
+      }
+      if (error instanceof CollectionNotFoundError) {
+        return void res.status(404).json({ message: error.message });
+      }
+      // Handle potential errors from embedding service or query
+      console.error("Error during collection query:", error);
+      next(error); // Pass to generic error handler
     }
   },
 };

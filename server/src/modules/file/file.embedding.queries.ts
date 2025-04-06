@@ -1,7 +1,8 @@
 import { db } from '@/database/connection'; // Keep db import for default runner
 import type { Knex } from 'knex';
 import type { File as DbFileType } from './file.schema'; // Import File type
-import { FILES_TABLE, TEXT_EMBEDDINGS_TABLE, COLLECTIONS_TABLE } from '@/config/constants'; // Removed KNOWLEDGE_METADATA_INDEX_TABLE
+// Import necessary table names
+import { FILES_TABLE, TEXT_EMBEDDINGS_TABLE, COLLECTIONS_TABLE, COLLECTION_FILES_TABLE } from '@/config/constants';
 
 // Removed local constant declarations
 
@@ -27,15 +28,16 @@ const _insertTextEmbeddingsQuery = async ( // Make internal
     };
 
     // Use the provided db or trx instance
+    // Removed collection_id from INSERT statement as it doesn't exist on text_embeddings
     return dbOrTrx.raw(`
       INSERT INTO ${TEXT_EMBEDDINGS_TABLE}
-      (vector_id, user_id, file_id, collection_id, embedding, metadata, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?::vector, ?, NOW(), NOW())
+      (vector_id, user_id, file_id, embedding, metadata, created_at, updated_at)
+      VALUES (?, ?, ?, ?::vector, ?, NOW(), NOW())
     `, [
       vectorId,
       file.user_id,
       file.id,
-      null, // Pass null for collection_id as it's no longer directly on the file
+      // null, // Value for collection_id removed
       JSON.stringify(embeddings[i]), // Ensure embedding is stringified
       JSON.stringify(additionalMetadata) // Ensure metadata is stringified
     ]);
@@ -123,6 +125,54 @@ const _countRemainingFilesInCollectionQuery = async ( // Make internal
 
 // Removed _deleteCollectionKnowledgeIndexQuery as KNOWLEDGE_METADATA_INDEX_TABLE is removed
 
+/**
+ * Performs vector similarity search on text embeddings.
+ * @param dbOrTrx - Knex instance or transaction object.
+ * @param userId - The ID of the user performing the search.
+ * @param embedding - The query embedding vector.
+ * @param limit - The maximum number of results to return.
+ * @param collectionId - Optional collection ID to filter results.
+ * @returns Array of matching text embeddings with distance.
+ */
+const _findSimilarEmbeddingsQuery = async ( // Make internal
+  dbOrTrx: Knex | Knex.Transaction,
+  userId: string,
+  embedding: number[],
+  limit: number,
+  collectionId?: string
+): Promise<Array<{
+  vector_id: string;
+  file_id: string;
+  metadata: Record<string, any>;
+  distance: number; // Cosine distance
+}>> => {
+  const queryEmbeddingString = JSON.stringify(embedding);
+
+  let query = dbOrTrx(`${TEXT_EMBEDDINGS_TABLE} as te`)
+    .select(
+      'te.vector_id',
+      'te.file_id',
+      'te.metadata',
+      // Calculate cosine distance using the <=> operator
+      dbOrTrx.raw(`te.embedding <=> ?::vector AS distance`, [queryEmbeddingString])
+    )
+    .where('te.user_id', userId) // Ensure user owns the embedding's file
+    .orderBy('distance', 'asc') // Order by distance (closer is smaller)
+    .limit(limit);
+
+  // If collectionId is provided, join with collection_files and filter
+  if (collectionId) {
+    // Ensure we join correctly to filter embeddings based on file's presence in the collection
+    query = query
+      .join(`${COLLECTION_FILES_TABLE} as cf`, 'te.file_id', 'cf.file_id')
+      .where('cf.collection_id', collectionId);
+  }
+
+  // console.log("Similarity Query:", query.toString()); // For debugging
+  return query;
+};
+
+
 // --- Query Runner ---
 
 /**
@@ -137,6 +187,14 @@ export const createEmbeddingQueryRunner = (dbOrTrx: Knex | Knex.Transaction) => 
       chunks: { text: string; metadata?: Record<string, any> }[],
       embeddings: number[][]
     ) => _insertTextEmbeddingsQuery(dbOrTrx, file, chunks, embeddings),
+
+    // Add the new similarity search function to the runner
+    findSimilarEmbeddings: (
+      userId: string,
+      embedding: number[],
+      limit: number,
+      collectionId?: string
+    ) => _findSimilarEmbeddingsQuery(dbOrTrx, userId, embedding, limit, collectionId),
 
     // Removed upsertFileKnowledgeIndex
     // upsertFileKnowledgeIndex: (

@@ -23,5 +23,9 @@ router.post('/:collectionId/files', ensureAuthenticated, collectionsController.a
 // DELETE /api/collections/:collectionId/files/:fileId - Remove a file from a collection
 router.delete('/:collectionId/files/:fileId', ensureAuthenticated, collectionsController.removeFileFromCollection); // Use collectionsController
 
+// --- Query Route ---
+// POST /api/collections/:collectionId/query - Query embeddings within a collection
+router.post('/:collectionId/query', ensureAuthenticated, collectionsController.queryCollection);
+
 
 export const collectionsRouter = router;
