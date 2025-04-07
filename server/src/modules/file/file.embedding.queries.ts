@@ -35,18 +35,18 @@ const _insertTextEmbeddingsQuery = async ( // Make internal
     };
 
     // Use the provided db or trx instance
-    // Removed collection_id from INSERT statement as it doesn't exist on text_embeddings
+    // Add chunk_text to INSERT statement
     return dbOrTrx.raw(`
       INSERT INTO ${TEXT_EMBEDDINGS_TABLE}
-      (vector_id, user_id, file_id, embedding, metadata, created_at, updated_at)
-      VALUES (?, ?, ?, ?::vector, ?, NOW(), NOW())
+      (vector_id, user_id, file_id, embedding, metadata, chunk_text, created_at, updated_at)
+      VALUES (?, ?, ?, ?::vector, ?, ?, NOW(), NOW())
     `, [
       vectorId,
       file.user_id,
       file.id,
-      // null, // Value for collection_id removed
       JSON.stringify(embeddings[i]), // Ensure embedding is stringified
-      JSON.stringify(additionalMetadata) // Ensure metadata is stringified
+      JSON.stringify(additionalMetadata), // Ensure metadata is stringified
+      chunk.text // Add the original chunk text
     ]);
   });
 
@@ -226,6 +226,59 @@ const _findSimilarEmbeddingsQuery = async ( // Make internal
 };
 
 
+/**
+ * Performs Full-Text Search (FTS) on text embeddings.
+ * @param dbOrTrx - Knex instance or transaction object.
+ * @param userId - The ID of the user performing the search.
+ * @param queryText - The text query for FTS.
+ * @param limit - The maximum number of results to return.
+ * @param collectionId - Optional collection ID to filter results.
+ * @param ftsConfig - Optional FTS configuration (e.g., 'english'). Defaults to 'english'.
+ * @returns Array of matching text embeddings with FTS rank.
+ */
+const _findKeywordMatchesQuery = async ( // Make internal
+  dbOrTrx: Knex | Knex.Transaction,
+  userId: string,
+  queryText: string,
+  limit: number,
+  collectionId?: string,
+  ftsConfig: string = 'english' // Default FTS config
+): Promise<Array<{
+  vector_id: string;
+  file_id: string;
+  metadata: Record<string, any>;
+  rank: number; // FTS rank
+}>> => {
+  // Use websearch_to_tsquery for more flexible query parsing (handles operators like OR, -, quotes)
+  const tsQuery = dbOrTrx.raw(`websearch_to_tsquery(?, ?)`, [ftsConfig, queryText]);
+
+  let query = dbOrTrx(`${TEXT_EMBEDDINGS_TABLE} as te`)
+    .select(
+      'te.vector_id',
+      'te.file_id',
+      'te.metadata',
+      // Calculate FTS rank using ts_rank_cd for relevance scoring
+      dbOrTrx.raw(`ts_rank_cd(te.fts_vector, ?) AS rank`, [tsQuery])
+    )
+    .where('te.user_id', userId) // Ensure user ownership
+    .whereRaw(`te.fts_vector @@ ?`, [tsQuery]); // Match the tsquery against the indexed column
+
+  // Apply collection filter if provided
+  if (collectionId) {
+    query = query
+      .join(`${COLLECTION_FILES_TABLE} as cf`, 'te.file_id', 'cf.file_id')
+      .where('cf.collection_id', collectionId);
+  }
+
+  // Apply ordering and limit
+  query = query.orderBy('rank', 'desc') // Order by rank (higher is more relevant)
+               .limit(limit);
+
+  return query;
+};
+
+
+
 // --- Query Runner ---
 
 /**
@@ -260,6 +313,22 @@ export const createEmbeddingQueryRunner = (dbOrTrx: Knex | Knex.Transaction) => 
         includeMetadataFilters, // Pass through
         excludeMetadataFilters, // Pass through
         maxDistance // Pass through
+      ),
+
+    // Add the new FTS query function to the runner
+    findKeywordMatches: (
+      userId: string,
+      queryText: string,
+      limit: number,
+      collectionId?: string,
+      ftsConfig?: string
+    ) => _findKeywordMatchesQuery(
+        dbOrTrx,
+        userId,
+        queryText,
+        limit,
+        collectionId,
+        ftsConfig
       ),
 
     // Removed upsertFileKnowledgeIndex

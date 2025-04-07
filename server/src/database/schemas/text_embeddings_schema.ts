@@ -26,6 +26,8 @@ export const text_embeddings_schema = {
           file_id UUID NOT NULL REFERENCES files(id) ON DELETE CASCADE,
           embedding VECTOR(${VECTOR_DIMENSION}) NOT NULL,
           metadata JSONB NOT NULL,
+          chunk_text TEXT NOT NULL, -- Store original chunk text for FTS processing
+          fts_vector TSVECTOR, -- Column for FTS index
           created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
           PRIMARY KEY (vector_id, user_id)
@@ -47,19 +49,44 @@ export const text_embeddings_schema = {
       // Add GIN index for metadata querying
       await knex.raw(`CREATE INDEX ${TABLE_NAME}_metadata_gin_idx ON ${TABLE_NAME} USING GIN (metadata);`);
 
+      // Add GIN index for Full-Text Search on the new tsvector column
+      await knex.raw(`CREATE INDEX ${TABLE_NAME}_fts_vector_gin_idx ON ${TABLE_NAME} USING GIN (fts_vector);`);
+
       // Create HNSW index for vector similarity search
       await knex.raw(`
         CREATE INDEX ${TABLE_NAME}_embedding_hnsw_idx 
         ON ${TABLE_NAME} USING hnsw (embedding vector_cosine_ops);
       `);
 
-      console.log(`Created table ${TABLE_NAME} with vector dimension ${VECTOR_DIMENSION} and partitioning`);
+      console.log(`Created table ${TABLE_NAME} with vector dimension ${VECTOR_DIMENSION}, partitioning, and FTS support`);
     });
+
+    // Add a trigger to automatically update the fts_vector column when chunk_text changes
+    // Using 'english' configuration, adjust if multi-language support is needed
+    await knex.raw(`
+      CREATE OR REPLACE FUNCTION update_fts_vector() RETURNS TRIGGER AS $$
+      BEGIN
+        NEW.fts_vector := to_tsvector('english', NEW.chunk_text);
+        RETURN NEW;
+      END;
+      $$ LANGUAGE plpgsql;
+    `);
+
+    await knex.raw(`
+      CREATE TRIGGER update_fts_trigger
+      BEFORE INSERT OR UPDATE ON ${TABLE_NAME}
+      FOR EACH ROW EXECUTE FUNCTION update_fts_vector();
+    `);
+
   },
 
   down: async function down(knex: Knex): Promise<void> {
     return knex.transaction(async (trx) => {
-      // Drop partitions first
+      // Drop the trigger and function first
+      await trx.raw(`DROP TRIGGER IF EXISTS update_fts_trigger ON ${TABLE_NAME};`);
+      await trx.raw(`DROP FUNCTION IF EXISTS update_fts_vector();`);
+
+      // Drop partitions
       for (let i = 0; i < 4; i++) {
         await trx.raw(`DROP TABLE IF EXISTS ${TABLE_NAME}_part_${i}`);
       }

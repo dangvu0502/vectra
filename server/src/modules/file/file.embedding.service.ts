@@ -1,5 +1,5 @@
 import { MDocument } from '@mastra/rag';
-import { embedMany } from 'ai';
+import { embedMany, streamText } from 'ai'; // Import streamText for entity extraction
 import { openai } from '@ai-sdk/openai';
 // Removed duplicate imports
 import type { Knex } from 'knex';
@@ -37,6 +37,8 @@ export interface IEmbeddingService {
     queryText: string;
     limit: number;
     collectionId?: string;
+    searchMode?: 'vector' | 'keyword' | 'hybrid'; // Added search mode
+    // enableHeuristicReranking?: boolean; // REMOVED flag for optional reranking
     // Add optional filter parameters
     includeMetadataFilters?: MetadataFilter[];
     excludeMetadataFilters?: MetadataFilter[];
@@ -45,7 +47,10 @@ export interface IEmbeddingService {
     vector_id: string;
     file_id: string;
     metadata: Record<string, any>;
-    distance: number;
+    distance?: number; // Cosine distance (optional now)
+    rank?: number; // FTS rank (optional now)
+    score?: number; // RRF score (optional now)
+    // heuristic_score?: number; // REMOVED Optional score from reranking
   }>>;
 }
 
@@ -103,18 +108,24 @@ export class EmbeddingService implements IEmbeddingService {
         return;
       }
 
-      // 3. Enrich chunk metadata with section titles and file type
-      const fileType = path.extname(file.filename); // Get file extension
-      let lastFoundIndex = -1; // To optimize search in content
-      chunks.forEach(chunk => {
+      // 3. Enrich chunk metadata - Basic enrichment only
+      const fileType = path.extname(file.filename);
+      let lastFoundIndex = -1;
+
+      // Use a loop instead of forEach
+      for (const chunk of chunks) {
         // Initialize metadata if it doesn't exist
         chunk.metadata = chunk.metadata || {};
 
         // Add file_type metadata
         chunk.metadata.file_type = fileType;
 
+        // --- REMOVED: Simple Regex Code Block Detection ---
+        // --- REMOVED: LLM Call for Entities (NER) ---
+        // --- REMOVED: LLM Call for Chunk Summary ---
+
+        // --- Find Section Title (Existing Logic) ---
         // Find approximate start index of chunk text in original content
-        // Note: This is a simple search and might be inaccurate if chunk text repeats exactly.
         const chunkStartIndex = file.content.indexOf(chunk.text, lastFoundIndex + 1);
         if (chunkStartIndex !== -1) {
           lastFoundIndex = chunkStartIndex;
@@ -126,16 +137,14 @@ export class EmbeddingService implements IEmbeddingService {
               break;
             }
           }
-          // Add section_title to metadata (initialize if metadata doesn't exist)
-          chunk.metadata = chunk.metadata || {};
+          // Add section_title to metadata
           chunk.metadata.section_title = relevantHeading;
         } else {
-           // Handle case where chunk text isn't found (might happen with overlap/splitting)
-           chunk.metadata = chunk.metadata || {};
+           // Handle case where chunk text isn't found
            chunk.metadata.section_title = 'Unknown Section (Chunk text not found)';
            console.warn(`Could not find start index for chunk in file ${file.id}`);
         }
-      });
+      } // End of loop through chunks
 
       // 4. Generate embeddings using embedMany from 'ai'
       const texts = chunks.map(chunk => chunk.text);
@@ -157,7 +166,6 @@ export class EmbeddingService implements IEmbeddingService {
         await txRunner.insertTextEmbeddings(file, chunks, embeddings);
 
       // Removed logic to update collection knowledge index here.
-      // This should be handled separately, perhaps when collections are explicitly updated or queried.
 
       });
 
@@ -177,10 +185,7 @@ export class EmbeddingService implements IEmbeddingService {
         // Delete text embeddings using the transaction runner
         await txRunner.deleteTextEmbeddingsByFileId(fileId);
 
-        // Removed call to deleteFileKnowledgeIndex as the function is removed
-
-        // Removed logic that checked for collection_id and potentially deleted collection knowledge index.
-        // This logic needs to be handled elsewhere due to the many-to-many relationship.
+        // Removed call to deleteFileKnowledgeIndex
 
       });
     } catch (error) {
@@ -199,11 +204,15 @@ export class EmbeddingService implements IEmbeddingService {
     includeMetadataFilters, // Added
     excludeMetadataFilters, // Added
     maxDistance,            // Added
+    searchMode = 'vector',  // Added searchMode with default
+    // enableHeuristicReranking = false, // REMOVED flag with default
   }: {
     userId: string;
     queryText: string;
     limit: number;
     collectionId?: string;
+    searchMode?: 'vector' | 'keyword' | 'hybrid'; // Added search mode
+    // enableHeuristicReranking?: boolean; // REMOVED flag for optional reranking
     includeMetadataFilters?: MetadataFilter[]; // Added
     excludeMetadataFilters?: MetadataFilter[]; // Added
     maxDistance?: number; // Added
@@ -211,34 +220,102 @@ export class EmbeddingService implements IEmbeddingService {
     vector_id: string;
     file_id: string;
     metadata: Record<string, any>;
-    distance: number;
+    distance?: number;
+    rank?: number;
+    score?: number;
+    // heuristic_score?: number; // REMOVED Optional score from reranking
   }>> {
     try {
-      // Embed the query text
-      const { embedding } = await embed({
-        model: openai.embedding('text-embedding-3-small'),
-        value: queryText,
-      });
+      const runner = createEmbeddingQueryRunner(this.db);
+      const kRRF = 60; // Constant for RRF calculation
 
-      if (!embedding) {
-        throw new Error('Failed to generate embedding for query text.');
+      // --- Vector Search Logic ---
+      const performVectorSearch = async () => {
+        const { embedding } = await embed({
+          model: openai.embedding('text-embedding-3-small'),
+          value: queryText,
+        });
+        if (!embedding) {
+          throw new Error('Failed to generate embedding for query text.');
+        }
+        return runner.findSimilarEmbeddings(
+          userId, embedding, limit, collectionId,
+          includeMetadataFilters, excludeMetadataFilters, maxDistance
+        );
+      };
+
+      // --- Keyword Search Logic ---
+      const performKeywordSearch = async () => {
+        return runner.findKeywordMatches(
+          userId, queryText, limit, collectionId
+          // TODO: Add metadata filters to keyword search if needed
+        );
+      };
+
+      // --- Execute Searches based on Mode ---
+      let finalResults: Array<{
+        vector_id: string;
+        file_id: string;
+        metadata: Record<string, any>;
+        distance?: number;
+        rank?: number;
+        score?: number; // RRF score
+      }> = [];
+
+      if (searchMode === 'vector') {
+        finalResults = await performVectorSearch();
+      } else if (searchMode === 'keyword') {
+        finalResults = await performKeywordSearch();
+      } else if (searchMode === 'hybrid') {
+        // Execute both searches in parallel
+        const [vectorResults, keywordResults] = await Promise.all([
+          performVectorSearch(),
+          performKeywordSearch()
+        ]);
+
+        // Implement RRF
+        const rrfScores: { [key: string]: { score: number; data: any } } = {};
+
+        // Process vector results (lower distance is better rank)
+        vectorResults.forEach((result, index) => {
+          const rank = index + 1;
+          const score = 1 / (kRRF + rank);
+          if (!rrfScores[result.vector_id]) {
+            rrfScores[result.vector_id] = { score: 0, data: { ...result, distance: result.distance } }; // Keep distance
+          }
+          rrfScores[result.vector_id].score += score;
+        });
+
+        // Process keyword results (higher rank is better rank)
+        keywordResults.forEach((result, index) => {
+          const rank = index + 1; // Rank is directly from DB query order (desc)
+          const score = 1 / (kRRF + rank);
+           if (!rrfScores[result.vector_id]) {
+             // If only found by keyword, store its data but initialize score
+             rrfScores[result.vector_id] = { score: 0, data: { ...result, rank: result.rank } }; // Keep rank
+           } else {
+             // If already present from vector search, just add score and maybe rank info
+             rrfScores[result.vector_id].data.rank = result.rank;
+           }
+           rrfScores[result.vector_id].score += score;
+        });
+
+        // Combine and sort
+        const combined = Object.values(rrfScores).map(item => ({
+          ...item.data, // Includes vector_id, file_id, metadata, distance?, rank?
+          score: item.score // Add the final RRF score
+        }));
+
+        combined.sort((a, b) => b.score - a.score); // Sort by RRF score descending
+
+        finalResults = combined.slice(0, limit);
+      } else {
+        throw new Error(`Invalid search mode: ${searchMode}`);
       }
 
-      // Use the default DB connection runner for querying
-      // (Could also use transactions if needed within a larger operation)
-      const runner = createEmbeddingQueryRunner(this.db);
-      // Pass new filter parameters to the query runner
-      const results = await runner.findSimilarEmbeddings(
-        userId,
-        embedding,
-        limit,
-        collectionId,
-        includeMetadataFilters, // Pass include filters
-        excludeMetadataFilters, // Pass exclude filters
-        maxDistance             // Pass distance threshold
-      );
+      // --- REMOVED: Optional Heuristic Re-ranking ---
 
-      return results;
+      return finalResults;
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
