@@ -1,8 +1,10 @@
-import { db } from '@/database/connection'; // Keep db import for default runner
 import type { Knex } from 'knex';
 import type { File as DbFileType } from './file.schema'; // Import File type
 // Import necessary table names
-import { FILES_TABLE, TEXT_EMBEDDINGS_TABLE, COLLECTIONS_TABLE, COLLECTION_FILES_TABLE } from '@/config/constants';
+import { COLLECTIONS_TABLE, COLLECTION_FILES_TABLE, FILES_TABLE, TEXT_EMBEDDINGS_TABLE } from '@/config/constants';
+// Import the extracted search functions
+import { findSimilarEmbeddings, findKeywordMatches } from './embedding.search.queries';
+
 
 // Define and export the MetadataFilter type
 export type MetadataFilter = {
@@ -132,151 +134,11 @@ const _countRemainingFilesInCollectionQuery = async ( // Make internal
 
 // Removed _deleteCollectionKnowledgeIndexQuery as KNOWLEDGE_METADATA_INDEX_TABLE is removed
 
-/**
- * Performs vector similarity search on text embeddings.
- * @param dbOrTrx - Knex instance or transaction object.
- * @param userId - The ID of the user performing the search.
- * @param embedding - The query embedding vector.
- * @param limit - The maximum number of results to return.
- * @param collectionId - Optional collection ID to filter results.
- * @param includeMetadataFilters - Optional array of filters for required metadata values.
- * @param excludeMetadataFilters - Optional array of filters for excluded metadata patterns.
- * @param maxDistance - Optional maximum cosine distance threshold.
- * @returns Array of matching text embeddings with distance.
- */
-const _findSimilarEmbeddingsQuery = async ( // Make internal
-  dbOrTrx: Knex | Knex.Transaction,
-  userId: string,
-  embedding: number[],
-  limit: number,
-  collectionId?: string,
-  includeMetadataFilters?: MetadataFilter[], // Added
-  excludeMetadataFilters?: MetadataFilter[], // Added
-  maxDistance?: number // Added
-): Promise<Array<{
-  vector_id: string;
-  file_id: string;
-  metadata: Record<string, any>;
-  distance: number; // Cosine distance
-}>> => {
-  const queryEmbeddingString = JSON.stringify(embedding);
+// --- REMOVED _findSimilarEmbeddingsQuery ---
+// The logic is now in embedding.search.queries.ts
 
-  let query = dbOrTrx(`${TEXT_EMBEDDINGS_TABLE} as te`)
-    .select(
-      'te.vector_id',
-      'te.file_id',
-      'te.metadata',
-      // Calculate cosine distance using the <=> operator
-      dbOrTrx.raw(`te.embedding <=> ?::vector AS distance`, [queryEmbeddingString])
-    )
-    .where('te.user_id', userId); // Ensure user owns the embedding's file
-    // Apply filters before ordering and limiting
-
-  // Apply collection filter if provided
-  if (collectionId) {
-    query = query
-      .join(`${COLLECTION_FILES_TABLE} as cf`, 'te.file_id', 'cf.file_id')
-      .where('cf.collection_id', collectionId);
-  }
-
-  // Apply include metadata filters
-  if (includeMetadataFilters && includeMetadataFilters.length > 0) {
-    includeMetadataFilters.forEach(filter => {
-      if (filter.value !== undefined) { // Check for undefined explicitly
-        // Use ->> for text extraction and = for exact match
-        query = query.whereRaw(`te.metadata->>? = ?`, [filter.field, filter.value]);
-      }
-      // Add other conditions like pattern matching if needed for include filters
-    });
-  }
-
-  // Apply exclude metadata filters
-  if (excludeMetadataFilters && excludeMetadataFilters.length > 0) {
-    excludeMetadataFilters.forEach(filter => {
-      if (filter.pattern !== undefined) {
-        // Use ->> for text extraction and LIKE for pattern match
-        // Ensure pattern includes wildcards where needed (e.g., '%DOCKER%')
-        // Correct syntax: whereNot with dbOrTrx.raw()
-        query = query.whereNot(dbOrTrx.raw(`te.metadata->>? LIKE ?`, [filter.field, filter.pattern]));
-      } else if (filter.value !== undefined) {
-        // Exclude exact matches if only value is provided
-        // Correct syntax: whereNot with dbOrTrx.raw()
-         query = query.whereNot(dbOrTrx.raw(`te.metadata->>? = ?`, [filter.field, filter.value]));
-      }
-    });
-  }
-
-   // Apply distance threshold filter (only keep results *below* or equal to maxDistance)
-   if (maxDistance !== undefined && maxDistance >= 0) {
-     // We need to calculate distance first, then filter. This might require a subquery
-     // or applying the filter after the main selection if the DB supports it directly.
-     // For simplicity here, let's assume we can filter on the calculated alias.
-     // Note: This might need adjustment based on DB behavior. A safer way is often a subquery.
-     // Let's try adding it directly to the main query for now.
-     query = query.where(dbOrTrx.raw(`(te.embedding <=> ?::vector) <= ?`, [queryEmbeddingString, maxDistance]));
-     // Re-calculate distance in select if needed, or rely on the WHERE clause calculation
-   }
-
-
-  // Apply ordering and limit *after* all filters
-  query = query.orderBy('distance', 'asc') // Order by distance (closer is smaller)
-               .limit(limit);
-
-  return query;
-};
-
-
-/**
- * Performs Full-Text Search (FTS) on text embeddings.
- * @param dbOrTrx - Knex instance or transaction object.
- * @param userId - The ID of the user performing the search.
- * @param queryText - The text query for FTS.
- * @param limit - The maximum number of results to return.
- * @param collectionId - Optional collection ID to filter results.
- * @param ftsConfig - Optional FTS configuration (e.g., 'english'). Defaults to 'english'.
- * @returns Array of matching text embeddings with FTS rank.
- */
-const _findKeywordMatchesQuery = async ( // Make internal
-  dbOrTrx: Knex | Knex.Transaction,
-  userId: string,
-  queryText: string,
-  limit: number,
-  collectionId?: string,
-  ftsConfig: string = 'english' // Default FTS config
-): Promise<Array<{
-  vector_id: string;
-  file_id: string;
-  metadata: Record<string, any>;
-  rank: number; // FTS rank
-}>> => {
-  // Use websearch_to_tsquery for more flexible query parsing (handles operators like OR, -, quotes)
-  const tsQuery = dbOrTrx.raw(`websearch_to_tsquery(?, ?)`, [ftsConfig, queryText]);
-
-  let query = dbOrTrx(`${TEXT_EMBEDDINGS_TABLE} as te`)
-    .select(
-      'te.vector_id',
-      'te.file_id',
-      'te.metadata',
-      // Calculate FTS rank using ts_rank_cd for relevance scoring
-      dbOrTrx.raw(`ts_rank_cd(te.fts_vector, ?) AS rank`, [tsQuery])
-    )
-    .where('te.user_id', userId) // Ensure user ownership
-    .whereRaw(`te.fts_vector @@ ?`, [tsQuery]); // Match the tsquery against the indexed column
-
-  // Apply collection filter if provided
-  if (collectionId) {
-    query = query
-      .join(`${COLLECTION_FILES_TABLE} as cf`, 'te.file_id', 'cf.file_id')
-      .where('cf.collection_id', collectionId);
-  }
-
-  // Apply ordering and limit
-  query = query.orderBy('rank', 'desc') // Order by rank (higher is more relevant)
-               .limit(limit);
-
-  return query;
-};
-
+// --- REMOVED _findKeywordMatchesQuery ---
+// The logic is now in embedding.search.queries.ts
 
 
 // --- Query Runner ---
@@ -294,41 +156,28 @@ export const createEmbeddingQueryRunner = (dbOrTrx: Knex | Knex.Transaction) => 
       embeddings: number[][]
     ) => _insertTextEmbeddingsQuery(dbOrTrx, file, chunks, embeddings),
 
-    // Add the new similarity search function to the runner
+    // Use the imported search functions
     findSimilarEmbeddings: (
       userId: string,
       embedding: number[],
       limit: number,
       collectionId?: string,
-      // Add new optional filter parameters to the runner method signature
       includeMetadataFilters?: MetadataFilter[],
       excludeMetadataFilters?: MetadataFilter[],
       maxDistance?: number
-    ) => _findSimilarEmbeddingsQuery(
-        dbOrTrx,
-        userId,
-        embedding,
-        limit,
-        collectionId,
-        includeMetadataFilters, // Pass through
-        excludeMetadataFilters, // Pass through
-        maxDistance // Pass through
+    ) => findSimilarEmbeddings( // Use imported function
+        dbOrTrx, userId, embedding, limit, collectionId,
+        includeMetadataFilters, excludeMetadataFilters, maxDistance
       ),
 
-    // Add the new FTS query function to the runner
     findKeywordMatches: (
       userId: string,
       queryText: string,
       limit: number,
       collectionId?: string,
       ftsConfig?: string
-    ) => _findKeywordMatchesQuery(
-        dbOrTrx,
-        userId,
-        queryText,
-        limit,
-        collectionId,
-        ftsConfig
+    ) => findKeywordMatches( // Use imported function
+        dbOrTrx, userId, queryText, limit, collectionId, ftsConfig
       ),
 
     // Removed upsertFileKnowledgeIndex

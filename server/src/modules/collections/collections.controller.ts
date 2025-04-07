@@ -4,8 +4,12 @@ import {
   CreateCollectionSchema,
   UpdateCollectionSchema,
   CollectionIdParamSchema,
-  // Assuming we'll add Zod schemas for file linking if needed, e.g., in collections.types.ts
-  // AddFileToCollectionParamsSchema, AddFileToCollectionBodySchema, RemoveFileFromCollectionParamsSchema
+  // Import the moved schemas
+  QueryCollectionBodySchema,
+  AddFileToCollectionParamsSchema,
+  AddFileToCollectionBodySchema,
+  RemoveFileFromCollectionParamsSchema,
+  GetFilesInCollectionParamsSchema
 } from './collections.types';
 import type { UserProfile } from '@/modules/auth/auth.types';
 import {
@@ -21,39 +25,9 @@ import { db } from '@/database/connection'; // Import the database connection in
 import { EmbeddingService } from '@/modules/file/file.embedding.service';
 const embeddingService = EmbeddingService.getInstance(db); // Use the imported db instance
 
-// Define Zod schemas here or import from types.ts if defined there
-const QueryCollectionBodySchema = z.object({
-  queryText: z.string().min(1, "Query text cannot be empty"),
-  limit: z.number().int().positive().optional().default(10), // Default limit
-});
-const AddFileToCollectionParamsSchema = z.object({
-  collectionId: z.string().uuid("Invalid Collection ID format"),
-});
-const AddFileToCollectionBodySchema = z.object({
-  fileId: z.string().uuid("Invalid File ID format"),
-});
-const RemoveFileFromCollectionParamsSchema = z.object({
-  collectionId: z.string().uuid("Invalid Collection ID format"),
-  fileId: z.string().uuid("Invalid File ID format"),
-});
-const GetFilesInCollectionParamsSchema = z.object({
-  collectionId: z.string().uuid("Invalid Collection ID format"),
-});
+// --- REMOVED Local Zod Schema Definitions (moved to types.ts) ---
 
-// Export middleware to ensure user is authenticated
-export const ensureAuthenticated = (req: Request, res: Response, next: NextFunction) => {
-  req.user = {
-    id: TEST_USER_ID
-  } as UserProfile;
-  if (!req.user) {
-    // Send the response but don't return it from the function signature view
-    res.status(401).send(); 
-    // Do not call next() here, as the response is finished.
-  } else {
-    // Only call next() if authenticated
-    next();
-  }
-};
+// --- REMOVED ensureAuthenticated middleware (moved to auth.middleware.ts) ---
 
 export const collectionsController = {
   // POST /collections - Create a new collection

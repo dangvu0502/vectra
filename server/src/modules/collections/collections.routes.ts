@@ -1,6 +1,8 @@
 import { Router } from 'express';
-// Import only collections controller and middleware
-import { collectionsController, ensureAuthenticated } from './collections.controller';
+// Import collections controller
+import { collectionsController } from './collections.controller';
+// Import middleware from its new location
+import { ensureAuthenticated } from '../auth/auth.middleware';
 // Remove fileController import
 
 const router = Router();

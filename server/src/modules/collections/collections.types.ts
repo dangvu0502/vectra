@@ -32,3 +32,37 @@ export const CollectionIdParamSchema = z.object({
   collectionId: z.string().uuid("Invalid Collection ID format"),
 });
 export type CollectionIdParam = z.infer<typeof CollectionIdParamSchema>;
+
+// --- Schemas moved from Controller ---
+
+// Schema for querying within a collection
+export const QueryCollectionBodySchema = z.object({
+  queryText: z.string().min(1, "Query text cannot be empty"),
+  limit: z.number().int().positive().optional().default(10), // Default limit
+});
+export type QueryCollectionBodyInput = z.infer<typeof QueryCollectionBodySchema>;
+
+// Schema for adding a file to a collection (params)
+export const AddFileToCollectionParamsSchema = z.object({
+  collectionId: z.string().uuid("Invalid Collection ID format"),
+});
+export type AddFileToCollectionParams = z.infer<typeof AddFileToCollectionParamsSchema>;
+
+// Schema for adding a file to a collection (body)
+export const AddFileToCollectionBodySchema = z.object({
+  fileId: z.string().uuid("Invalid File ID format"),
+});
+export type AddFileToCollectionBodyInput = z.infer<typeof AddFileToCollectionBodySchema>;
+
+// Schema for removing a file from a collection (params)
+export const RemoveFileFromCollectionParamsSchema = z.object({
+  collectionId: z.string().uuid("Invalid Collection ID format"),
+  fileId: z.string().uuid("Invalid File ID format"),
+});
+export type RemoveFileFromCollectionParams = z.infer<typeof RemoveFileFromCollectionParamsSchema>;
+
+// Schema for getting files in a collection (params)
+export const GetFilesInCollectionParamsSchema = z.object({
+  collectionId: z.string().uuid("Invalid Collection ID format"),
+});
+export type GetFilesInCollectionParams = z.infer<typeof GetFilesInCollectionParamsSchema>;
