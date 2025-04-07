@@ -7,6 +7,7 @@ import { db } from '@/database/connection';
 import { FileNotFoundError, CollectionNotFoundError, ForbiddenError } from '@/shared/errors'; // Updated path for errors
 import { querySchema, type File as DbFileType, type QueryOptions } from './file.schema';
 import { EmbeddingService, type IEmbeddingService } from './file.embedding.service';
+import { firecrawlService } from '@/modules/firecrawl/firecrawl.service'; // Import FirecrawlService
 // Import the specific query needed for linking and the Collection type
 import { collectionsQueries } from '@/modules/collections/collections.queries';
 import type { Collection } from '@/modules/collections/collections.types'; // Import Collection type
@@ -31,6 +32,7 @@ export interface IFileService {
   query(options?: QueryOptions): Promise<{ files: DbFileType[]; total: number }>;
   findById(id: string): Promise<DbFileType | null>;
   delete(id: string): Promise<void>;
+  ingestUrl(params: { url: string; collectionId?: string; userId: string }): Promise<DbFileType>; // Add ingestUrl
   // Methods related to direct file-collection links (add/remove/getFilesIn) are removed
   getCollectionsForFile(fileId: string, userId: string): Promise<Collection[]>; // Use Collection type
 }
@@ -39,15 +41,17 @@ class FileService implements IFileService {
   private static instance: FileService | null = null;
   private readonly db: Knex;
   private readonly embeddingService: IEmbeddingService;
+  private readonly firecrawlService: typeof firecrawlService; // Add firecrawlService dependency
 
-  private constructor(db: Knex, embeddingService: IEmbeddingService) {
+  private constructor(db: Knex, embeddingService: IEmbeddingService, firecrawlSvc: typeof firecrawlService) {
     this.db = db;
     this.embeddingService = embeddingService;
+    this.firecrawlService = firecrawlSvc; // Initialize firecrawlService
   }
 
-  static getInstance(db: Knex, embeddingService: IEmbeddingService): FileService {
+  static getInstance(db: Knex, embeddingService: IEmbeddingService, firecrawlSvc: typeof firecrawlService): FileService {
     if (!FileService.instance) {
-      FileService.instance = new FileService(db, embeddingService);
+      FileService.instance = new FileService(db, embeddingService, firecrawlSvc);
     }
     return FileService.instance;
   }
@@ -137,6 +141,95 @@ class FileService implements IFileService {
       throw error; // Re-throw the original error
     }
   }
+
+  async ingestUrl({ url, collectionId, userId }: {
+    url: string;
+    collectionId?: string;
+    userId: string;
+  }): Promise<DbFileType> {
+    console.log(`Attempting to ingest URL: ${url}`);
+    const scrapedContent = await this.firecrawlService.scrapeUrl(url);
+
+    if (!scrapedContent) {
+      throw new Error(`Failed to scrape content from URL: ${url}`);
+    }
+
+    const fileId = uuidv4();
+    const uploadDir = FileConfig?.upload?.directory || process.env.UPLOAD_DIR || 'uploads';
+    // Create a filename based on the URL or timestamp - let's use fileId for simplicity
+    const newFilename = `${fileId}.md`; // Save as markdown
+    await fs.mkdir(uploadDir, { recursive: true });
+    const newPath = path.join(uploadDir, newFilename);
+
+    let createdDbFile: DbFileType;
+    let transaction: Knex.Transaction | null = null;
+
+    try {
+      transaction = await db.transaction();
+
+      // Write scraped content to the file
+      await fs.writeFile(newPath, scrapedContent, 'utf-8');
+      console.log(`Saved scraped content to: ${newPath}`);
+
+      // Estimate size (optional, could get actual size)
+      const estimatedSize = Buffer.byteLength(scrapedContent, 'utf-8');
+
+      // Prepare file data
+      const fileData = {
+        id: fileId,
+        filename: url, // Use URL as the original filename
+        path: newPath,
+        content: scrapedContent, // Store scraped content
+        user_id: userId,
+        metadata: {
+          originalSize: estimatedSize,
+          mimeType: 'text/markdown', // Set mime type to markdown
+          sourceUrl: url, // Add source URL to metadata
+          embeddingsCreated: false,
+        },
+        created_at: new Date(),
+        updated_at: new Date()
+      };
+
+      // Insert file metadata
+      createdDbFile = await insertFileQuery(fileData, transaction);
+
+      // Link to collection if ID provided
+      if (collectionId) {
+        const targetCollection = await collectionsQueries.findCollectionById(collectionId, userId);
+        if (!targetCollection) {
+          throw new CollectionNotFoundError(collectionId);
+        }
+        await collectionsQueries.addFileLinkQuery(collectionId, createdDbFile.id, transaction);
+        console.log(`Linked ingested file ${createdDbFile.id} to collection ${collectionId}`);
+      }
+
+      await transaction.commit();
+
+      // Trigger embedding process asynchronously
+      const fileForEmbedding: DbFileType = createdDbFile;
+      this.embeddingService.processFile(fileForEmbedding).then(() => {
+        console.log(`Embedding process initiated successfully for ingested file ${fileId}`);
+        return updateFileEmbeddingSuccessQuery(fileId, new Date().toISOString());
+      }).catch(embeddingError => {
+        console.error(`Embedding failed for ingested file ${fileId}:`, embeddingError);
+        const errorMsg = embeddingError instanceof Error ? embeddingError.message : 'Unknown embedding error';
+        return updateFileEmbeddingErrorQuery(fileId, errorMsg);
+      });
+
+      return createdDbFile;
+
+    } catch (error) {
+      console.error("Error during URL ingestion:", error);
+      if (transaction) {
+        await transaction.rollback();
+      }
+      // Cleanup the created .md file if it exists
+      fs.access(newPath).then(() => fs.unlink(newPath)).catch(() => {}); // Attempt cleanup, ignore errors
+      throw error;
+    }
+  }
+
 
   async query(options: QueryOptions = {}): Promise<{ files: DbFileType[]; total: number }> {
     const {
@@ -229,4 +322,5 @@ class FileService implements IFileService {
 
 // Keep instance export
 const embeddingService = EmbeddingService.getInstance(db);
-export const fileService = FileService.getInstance(db, embeddingService);
+// Pass firecrawlService instance when creating FileService instance
+export const fileService = FileService.getInstance(db, embeddingService, firecrawlService);

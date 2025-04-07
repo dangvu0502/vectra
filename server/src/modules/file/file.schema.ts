@@ -57,3 +57,11 @@ export const querySchema = z.object({
 }).strict();
 
 export type QueryOptions = z.infer<typeof querySchema>;
+
+// Schema for URL ingestion request body
+export const ingestUrlSchema = z.object({
+  url: z.string().url({ message: 'Invalid URL format' }),
+  collectionId: z.string().uuid({ message: 'Invalid Collection ID format' }).optional(),
+}).strict();
+
+export type IngestUrlBody = z.infer<typeof ingestUrlSchema>;

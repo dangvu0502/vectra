@@ -4,7 +4,8 @@ import { z } from 'zod';
 import { FileNotFoundError, ForbiddenError } from '@/shared/errors'; // Import ForbiddenError
 import type { IFileService } from './file.service';
 import { fileService } from './file.service';
-import { fileSchema, querySchema, type File as DbFileType } from './file.schema';
+// Import the new schema
+import { fileSchema, querySchema, ingestUrlSchema, type File as DbFileType } from './file.schema';
 import { v4 as uuidv4 } from 'uuid';
 import { TEST_USER_ID } from '@/database/constants'; // Assuming TEST_USER_ID is still used for auth placeholder
 import type { UserProfile } from '@/modules/auth/auth.types';
@@ -68,6 +69,42 @@ class FileController {
       });
     } catch (error) {
       // Pass errors to the central error handler
+      next(error);
+    }
+  }
+
+  // POST /files/ingest-url - Ingest content from a URL
+  async ingestUrl(req: Request, res: Response, next: NextFunction) {
+    try {
+      const validatedBody = ingestUrlSchema.parse(req.body);
+      const user = req.user as UserProfile; // Assuming auth middleware adds user
+
+      const file: DbFileType = await this.fileService.ingestUrl({
+        url: validatedBody.url,
+        collectionId: validatedBody.collectionId,
+        userId: user.id // Use authenticated user ID
+      });
+
+      // Determine embedding status (similar to upload)
+      const embeddingStatus = file.metadata?.embeddingsCreated
+        ? { embeddingStatus: 'success', embeddingTimestamp: file.metadata.embeddingsTimestamp }
+        : file.metadata?.embeddingError
+          ? { embeddingStatus: 'error', embeddingError: file.metadata.embeddingError }
+          : { embeddingStatus: 'pending' };
+
+      res.status(201).json({ // 201 Created status
+        status: 'success',
+        data: {
+          ...file,
+          embedding: embeddingStatus
+        }
+      });
+    } catch (error) {
+      // Handle Zod validation errors specifically
+      if (error instanceof z.ZodError) {
+        return void res.status(400).json({ message: 'Invalid request body', errors: error.errors });
+      }
+      // Pass other errors to the central error handler
       next(error);
     }
   }

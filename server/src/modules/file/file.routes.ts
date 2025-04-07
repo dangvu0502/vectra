@@ -2,7 +2,7 @@ import { fileController } from '@/modules/file';
 import { DEFAULT_CONFIG } from '@/shared/config';
 import { Router } from 'express';
 import multer from 'multer';
-import { ensureAuthenticated } from '@/modules/collections/collections.controller'; // Import auth middleware
+import { ensureAuthenticated } from '@/modules/auth/auth.middleware'; // Corrected import path for auth middleware
 
 const router = Router();
 const upload = multer({
@@ -17,6 +17,12 @@ router.use(ensureAuthenticated);
 // Pass next to controller methods
 router.post('/upload', upload.single('file'), (req, res, next) => {
     return fileController.upload(req, res, next);
+});
+
+// POST /api/files/ingest-url - Ingest content from a URL
+router.post('/ingest-url', (req, res, next) => {
+    // Authentication is already applied via router.use(ensureAuthenticated)
+    return fileController.ingestUrl(req, res, next);
 });
 
 router.get('/', (req, res, next) => {

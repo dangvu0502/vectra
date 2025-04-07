@@ -9,7 +9,8 @@ const envSchema = z.object({
   GOOGLE_CLIENT_ID: z.string(),
   GOOGLE_CLIENT_SECRET: z.string(),
   API_BASE_URL: z.string().default('http://localhost:3000/api'), 
-  SESSION_SECRET: z.string(), // Needed for express-session
+  SESSION_SECRET: z.string(),
+  FIRECRAWL_API_KEY: z.string().optional(), // Add Firecrawl API Key (optional for now)
 });
 
 export const env = envSchema.parse(process.env);
