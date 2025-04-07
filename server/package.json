@@ -22,7 +22,6 @@
     "@mastra/memory": "^0.2.5",
     "@mastra/pg": "^0.2.5",
     "@mastra/rag": "^0.1.13",
-    "@mendable/firecrawl-js": "^1.22.0",
     "ai": "^4.1.61",
     "cors": "^2.8.5",
     "express": "^4.21.2",

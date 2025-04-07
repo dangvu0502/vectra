@@ -19,11 +19,7 @@ router.post('/upload', upload.single('file'), (req, res, next) => {
     return fileController.upload(req, res, next);
 });
 
-// POST /api/files/ingest-url - Ingest content from a URL
-router.post('/ingest-url', (req, res, next) => {
-    // Authentication is already applied via router.use(ensureAuthenticated)
-    return fileController.ingestUrl(req, res, next);
-});
+// Removed /ingest-url route
 
 router.get('/', (req, res, next) => {
     return fileController.query(req, res, next);
