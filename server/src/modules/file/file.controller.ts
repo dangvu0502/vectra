@@ -34,42 +34,91 @@ class FileController {
     FileController.instance = null;
   }
 
-  // POST /files - Upload a new file
-  async upload(req: Request & { file?: Express.Multer.File }, res: Response, next: NextFunction) {
+  // POST /files/upload - Upload multiple files
+  async uploadBulk(req: Request, res: Response, next: NextFunction) { // Revert req type in signature
     try {
-      if (!req.file) {
-        // Use return void for consistency in error responses
-        return void res.status(400).json({ message: 'No file uploaded' });
+      const user = req.user as UserProfile; // Assuming auth middleware adds user
+      // Explicitly cast req.files to the expected type inside the method
+      const files = req.files as Express.Multer.File[] | undefined;
+
+      if (!files || !Array.isArray(files) || files.length === 0) {
+        return void res.status(400).json({ message: 'No files uploaded' });
       }
 
-      const content = await fs.readFile(req.file.path, 'utf-8');
-      const user = req.user as UserProfile; // Assuming auth middleware adds user
+      const uploadedFilesInfo: DbFileType[] = [];
+      const errors: { fileName: string; error: string }[] = [];
 
-      // Pass collectionId if provided in the body (for initial assignment during upload)
-      const file: DbFileType = await this.fileService.upload({
-        file: req.file,
-        content,
-        collectionId: req.body?.collection_id, // This field is now ignored by the service due to schema change
-        userId: user.id // Use authenticated user ID
-      });
-
-      // Determine embedding status based on metadata
-      const embeddingStatus = file.metadata?.embeddingsCreated
-        ? { embeddingStatus: 'success', embeddingTimestamp: file.metadata.embeddingsTimestamp }
-        : file.metadata?.embeddingError
-          ? { embeddingStatus: 'error', embeddingError: file.metadata.embeddingError }
-          : { embeddingStatus: 'pending' };
-
-      res.status(201).json({
-        status: 'success',
-        data: {
-          ...file,
-          embedding: embeddingStatus
+      for (const file of files) { // Use the casted 'files' variable
+        try {
+          const content = await fs.readFile(file.path, 'utf-8');
+          const createdFile: DbFileType = await this.fileService.upload({
+            file: file,
+            content,
+            collectionId: req.body?.collection_id, // Optional: Assign to collection during bulk upload
+            userId: user.id
+          });
+          uploadedFilesInfo.push(createdFile);
+        } catch (uploadError: any) {
+          errors.push({ fileName: file.originalname, error: uploadError.message || 'Failed to process file' });
+          // Optionally delete the temp file if processing failed
+          await fs.unlink(file.path).catch(console.error); // Clean up temp file on error
+        } finally {
+           // Ensure temp file is deleted even if service call succeeds but something else fails later
+           // Or rely on multer's cleanup if configured
+           // Check if file path exists before unlinking, as it might have been unlinked in the catch block already
+           try {
+             await fs.access(file.path); // Check if file exists
+             await fs.unlink(file.path); // Unlink if it exists
+           } catch (unlinkError: any) {
+             // Ignore error if file doesn't exist (already unlinked), log others
+             if (unlinkError.code !== 'ENOENT') {
+                console.error(`Failed to clean up temp file ${file.path}:`, unlinkError);
+             }
+           }
         }
-      });
+      }
+
+      // Determine response based on success/failure mix
+      if (errors.length === files.length) { // Use casted 'files' variable
+        // All files failed
+        return void res.status(400).json({
+          status: 'error',
+          message: 'All files failed to upload.',
+          errors: errors
+        });
+      } else if (errors.length > 0) {
+        // Partial success
+        return void res.status(207).json({ // 207 Multi-Status
+          status: 'partial_success',
+          message: 'Some files were uploaded successfully, others failed.',
+          data: uploadedFilesInfo.map(file => ({
+            ...file,
+            embedding: file.metadata?.embeddingsCreated
+              ? { embeddingStatus: 'success', embeddingTimestamp: file.metadata.embeddingsTimestamp }
+              : file.metadata?.embeddingError
+                ? { embeddingStatus: 'error', embeddingError: file.metadata.embeddingError }
+                : { embeddingStatus: 'pending' }
+          })),
+          errors: errors
+        });
+      } else {
+        // All files succeeded
+        res.status(201).json({
+          status: 'success',
+          message: 'All files uploaded successfully.',
+          data: uploadedFilesInfo.map(file => ({
+            ...file,
+            embedding: file.metadata?.embeddingsCreated
+              ? { embeddingStatus: 'success', embeddingTimestamp: file.metadata.embeddingsTimestamp }
+              : file.metadata?.embeddingError
+                ? { embeddingStatus: 'error', embeddingError: file.metadata.embeddingError }
+                : { embeddingStatus: 'pending' }
+          }))
+        });
+      }
+
     } catch (error) {
-      // Pass errors to the central error handler
-      next(error);
+      next(error); // Pass unexpected errors to the central handler
     }
   }
 
