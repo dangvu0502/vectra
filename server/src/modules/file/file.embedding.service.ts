@@ -1,16 +1,16 @@
 import { openai } from '@ai-sdk/openai';
-import { MDocument } from '@mastra/rag';
-import { embedMany } from 'ai'; // Removed unused streamText import
+import { MDocument, rerank } from '@mastra/rag'; // Import rerank
+import { embedMany } from 'ai';
 import type { Knex } from 'knex';
-import path from 'path'; // Import path module
+import path from 'path';
 import type { File as DbFileType } from './file.schema';
 import { applyRRF, performKeywordSearch, performVectorSearch } from './embedding.query.strategies';
 import { createEmbeddingQueryRunner, type MetadataFilter } from './file.embedding.queries';
-// Import the metadata enrichment utility
-import { enrichChunkMetadata } from './embedding.metadata.utils';
+// REMOVED: import { enrichChunkMetadata } from './embedding.metadata.utils';
 
-// Default chunking options
-const DEFAULT_CHUNK_SIZE = 1000;
+// REMOVED: Default chunking options are now dynamic
+// const DEFAULT_CHUNK_SIZE = 1000;
+// const DEFAULT_OVERLAP_SIZE = 200;
 const DEFAULT_OVERLAP_SIZE = 200;
 
 // Interface defining the service's responsibilities
@@ -33,36 +33,23 @@ export interface IEmbeddingService {
     file_id: string;
     metadata: Record<string, any>;
     distance?: number; // Cosine distance (optional now)
-    rank?: number; // FTS rank (optional now)
-    score?: number; // RRF score (optional now)
-    // heuristic_score?: number; // REMOVED Optional score from reranking
+    rank?: number; // FTS rank (optional now) - May be less relevant after rerank
+    score?: number; // Combined score (RRF or rerank)
   }>>;
-  // Add method to get the underlying Knex instance if needed elsewhere
   getDbInstance(): Knex;
 }
 
 export class EmbeddingService implements IEmbeddingService {
   private static instance: EmbeddingService | null = null;
   private readonly db: Knex;
-  private readonly options: { chunkSize: number; overlapSize: number };
 
-  private constructor(
-    db: Knex,
-    options: { chunkSize?: number; overlapSize?: number } = {}
-  ) {
+  private constructor(db: Knex) { // Removed options from constructor
     this.db = db;
-    this.options = {
-      chunkSize: options.chunkSize || DEFAULT_CHUNK_SIZE,
-      overlapSize: options.overlapSize || DEFAULT_OVERLAP_SIZE,
-    };
   }
 
-  static getInstance(
-    db: Knex,
-    options: { chunkSize?: number; overlapSize?: number } = {}
-  ): EmbeddingService {
+  static getInstance(db: Knex): EmbeddingService { // Removed options
     if (!EmbeddingService.instance) {
-      EmbeddingService.instance = new EmbeddingService(db, options);
+      EmbeddingService.instance = new EmbeddingService(db);
     }
     return EmbeddingService.instance;
   }
@@ -78,33 +65,59 @@ export class EmbeddingService implements IEmbeddingService {
 
   async processFile(file: DbFileType): Promise<void> {
     try {
-      // Create document and chunk it using MDocument from @mastra/rag
-      const doc = MDocument.fromText(file.content, {
+      // 1. Determine File Type
+      const fileType = path.extname(file.filename).toLowerCase();
+
+      // 2. Prepare Initial Metadata
+      const initialMetadata = {
         user_id: file.user_id,
         file_id: file.id,
-        // collection_id: file.collection_id, // Removed - No longer directly on file
         filename: file.filename,
         created_at: file.created_at.toISOString(),
+        file_type: fileType, // Add file type here
         ...(file.metadata || {}),
-        chunkSize: this.options.chunkSize,
-        overlapSize: this.options.overlapSize,
-      });
+      };
+      const doc = MDocument.fromText(file.content, initialMetadata);
 
-      // 1. Chunk the document
-      // Cast the result of chunk() to the expected type if necessary, or ensure compatibility
-      // Assuming doc.chunk() returns an array compatible with the 'Chunk' type used in enrichChunkMetadata
-      let chunks: Array<{ text: string; metadata?: Record<string, any> }> = await doc.chunk();
+      // 3. Configure Dynamic Chunking Options
+      let chunkParams: any = {
+        extract: {
+          fields: [
+            { name: 'summary', description: 'A brief 1-2 sentence summary of the chunk content' },
+            { name: 'keywords', description: 'Comma-separated list of 3-5 main keywords' }
+          ],
+          model: 'gpt-4o-mini' // Or 'gpt-3.5-turbo'
+        }
+      };
+
+      switch (fileType) {
+        case '.md':
+          chunkParams = { ...chunkParams, strategy: 'markdown', headers: [['##', 'section_title']], size: 512, overlap: 50 };
+          break;
+        case '.html': case '.htm':
+          chunkParams = { ...chunkParams, strategy: 'html', size: 512, overlap: 50 };
+          break;
+        case '.json':
+          chunkParams = { ...chunkParams, strategy: 'json', maxSize: 1024 };
+          break;
+        case '.tex':
+          chunkParams = { ...chunkParams, strategy: 'latex', size: 512, overlap: 50 };
+          break;
+        default:
+          chunkParams = { ...chunkParams, strategy: 'token', modelName: 'text-embedding-3-small', size: 256, overlap: 50 };
+          break;
+      }
+
+      // 4. Chunk the document with dynamic options
+      let chunks: Array<{ text: string; metadata?: Record<string, any> }> = await doc.chunk(chunkParams);
       if (!chunks || chunks.length === 0) {
-        console.warn(`No chunks generated for file ${file.id}`);
+        console.warn(`No chunks generated for file ${file.id} using strategy ${chunkParams.strategy}`);
         return;
       }
 
-      // 2. Enrich chunk metadata using the utility function
-      // The enrichChunkMetadata function now modifies chunks in place and returns the same array reference
-      enrichChunkMetadata(file.content, chunks, file.filename);
+      // REMOVED: Call to enrichChunkMetadata
 
-      // 3. Generate embeddings using embedMany from 'ai'
-      // Ensure the input to map is compatible; chunk.text should exist based on our Chunk type
+      // 5. Generate embeddings using embedMany from 'ai'
       const texts = chunks.map(chunk => chunk.text);
       const { embeddings } = await embedMany({
         model: openai.embedding('text-embedding-3-small'),
@@ -123,8 +136,6 @@ export class EmbeddingService implements IEmbeddingService {
         // Insert embeddings using the transaction runner
         // Pass the potentially modified chunks array
         await txRunner.insertTextEmbeddings(file, chunks, embeddings);
-
-      // Removed logic to update collection knowledge index here.
 
       });
 
@@ -170,7 +181,6 @@ export class EmbeddingService implements IEmbeddingService {
     limit: number;
     collectionId?: string;
     searchMode?: 'vector' | 'keyword' | 'hybrid'; // Added search mode
-    // enableHeuristicReranking?: boolean; // REMOVED flag for optional reranking
     includeMetadataFilters?: MetadataFilter[]; // Added
     excludeMetadataFilters?: MetadataFilter[]; // Added
     maxDistance?: number; // Added
@@ -180,37 +190,32 @@ export class EmbeddingService implements IEmbeddingService {
     metadata: Record<string, any>;
     distance?: number;
     rank?: number;
-    score?: number;
-    // heuristic_score?: number; // REMOVED Optional score from reranking
+    score?: number; // Combined score (RRF or rerank)
   }>> {
     try {
-      // Create a query runner using the service's Knex instance
       const runner = createEmbeddingQueryRunner(this.db);
-      const kRRF = 60; // RRF constant (could be moved to config)
+      const kRRF = 60;
 
-      // Define type for results array
-      let finalResults: Array<{
+      let initialResults: Array<{
         vector_id: string;
         file_id: string;
         metadata: Record<string, any>;
         distance?: number;
         rank?: number;
-        score?: number; // RRF score
+        score?: number; // RRF score if hybrid
       }> = [];
 
-      // --- Execute Searches based on Mode using imported functions ---
+      // --- Execute Searches based on Mode ---
       if (searchMode === 'vector') {
-        finalResults = await performVectorSearch(
+        initialResults = await performVectorSearch(
           runner, userId, queryText, limit, collectionId,
           includeMetadataFilters, excludeMetadataFilters, maxDistance
         );
       } else if (searchMode === 'keyword') {
-        finalResults = await performKeywordSearch(
+        initialResults = await performKeywordSearch(
           runner, userId, queryText, limit, collectionId
-          // Pass metadata filters if keyword search supports them in the future
         );
       } else if (searchMode === 'hybrid') {
-        // Execute both searches in parallel using imported functions
         const [vectorResults, keywordResults] = await Promise.all([
           performVectorSearch(
             runner, userId, queryText, limit, collectionId,
@@ -218,19 +223,63 @@ export class EmbeddingService implements IEmbeddingService {
           ),
           performKeywordSearch(
             runner, userId, queryText, limit, collectionId
-            // Pass metadata filters if keyword search supports them
           )
         ]);
-
-        // Apply RRF using the imported function
-        finalResults = applyRRF(vectorResults, keywordResults, limit, kRRF);
+        initialResults = applyRRF(vectorResults, keywordResults, limit, kRRF);
       } else {
         throw new Error(`Invalid search mode: ${searchMode}`);
       }
 
-      // --- REMOVED: Optional Heuristic Re-ranking ---
+      // --- Integrate Reranking ---
+      let finalResults = initialResults; // Default to initial results
 
-      return finalResults;
+      if (initialResults.length > 0) {
+        // Ensure metadata.text exists for semantic scoring
+        // Assuming performVectorSearch/performKeywordSearch return metadata including 'text'
+        const resultsForReranking = initialResults.filter(r => r.metadata?.text);
+        if (resultsForReranking.length !== initialResults.length) {
+            console.warn("Some initial results missing metadata.text, excluding from reranking.");
+        }
+
+        if (resultsForReranking.length > 0) {
+            try {
+                const rerankedResults = await rerank(
+                  resultsForReranking.map(r => ({ // Map to QueryResult format for rerank
+                    id: r.vector_id,
+                    score: r.distance !== undefined ? 1 - r.distance : (r.score || 0), // Use distance or RRF score
+                    metadata: r.metadata,
+                  })),
+                  queryText,
+                  openai('gpt-4o-mini'), // Choose appropriate model
+                  { topK: limit }
+                );
+
+                // Map reranked results back to the expected format, ensuring type compatibility
+                finalResults = rerankedResults
+                  .map(r => {
+                    const fileId = r.result.metadata?.file_id;
+                    // Ensure file_id is a string and metadata is an object
+                    if (typeof fileId === 'string') {
+                      return {
+                        vector_id: r.result.id,
+                        file_id: fileId,
+                        metadata: r.result.metadata || {}, // Default to empty object if undefined
+                        score: r.score,
+                      };
+                    }
+                    return null; // Mark for filtering if file_id is not valid
+                  })
+                  .filter((result): result is { vector_id: string; file_id: string; metadata: Record<string, any>; score: number } => result !== null);
+
+            } catch (rerankError) {
+                console.error(`Reranking failed: ${rerankError instanceof Error ? rerankError.message : rerankError}. Returning initial results.`);
+            }
+        } else {
+             console.warn("No results with metadata.text available for reranking.");
+        }
+      }
+
+      return finalResults; // Return the potentially reranked results
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
