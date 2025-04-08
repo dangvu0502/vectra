@@ -22,7 +22,7 @@ export const MIN_SIMILARITY_THRESHOLD = 0.2;
 export const TEST_USER_ID = '00000000-0000-4000-a000-000000000001';
 
 // Vector Dimension
-export const VECTOR_DIMENSION = 1536;
+export const VECTOR_DIMENSION = 768;
 
 // Default Ports
 export const DEFAULT_PORT = 3000;

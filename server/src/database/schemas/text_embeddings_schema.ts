@@ -1,7 +1,7 @@
 import type { Knex } from 'knex';
 
 const TABLE_NAME = 'text_embeddings';
-const VECTOR_DIMENSION = 1536;
+const VECTOR_DIMENSION = 768;
 
 export const text_embeddings_schema = {
   up: async function up(knex: Knex): Promise<void> {

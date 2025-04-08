@@ -17,7 +17,6 @@
     "db:delete:force": "node --env-file=.env --import @swc-node/register/esm-register ./src/database/scripts/force-delete-db.ts --force"
   },
   "dependencies": {
-    "@ai-sdk/openai": "^1.2.5",
     "@mastra/core": "^0.6.4",
     "@mastra/memory": "^0.2.5",
     "@mastra/pg": "^0.2.5",
@@ -30,6 +29,7 @@
     "mastra": "^0.4.3",
     "morgan": "^1.10.0",
     "multer": "1.4.5-lts.1",
+    "ollama-ai-provider": "^1.2.0",
     "passport": "^0.7.0",
     "passport-github2": "^0.1.12",
     "passport-google-oauth20": "^2.0.0",

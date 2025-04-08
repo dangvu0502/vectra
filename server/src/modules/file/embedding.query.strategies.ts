@@ -1,4 +1,4 @@
-import { openai } from '@ai-sdk/openai';
+import { ollama } from 'ollama-ai-provider';
 import { embed } from 'ai';
 // Use ReturnType to get the type of the object returned by the factory function
 import { createEmbeddingQueryRunner, type MetadataFilter } from './file.embedding.queries';
@@ -28,7 +28,7 @@ export async function performVectorSearch(
   maxDistance?: number
 ): Promise<QueryResultItem[]> {
   const { embedding } = await embed({
-    model: openai.embedding('text-embedding-3-small'),
+    model: ollama.embedding('nomic-embed-text'),
     value: queryText,
   });
   if (!embedding) {

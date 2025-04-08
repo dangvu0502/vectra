@@ -1,4 +1,4 @@
-import { openai } from '@ai-sdk/openai';
+import { ollama } from 'ollama-ai-provider';
 import { MDocument, rerank } from '@mastra/rag'; // Import rerank
 import { embedMany } from 'ai';
 import type { Knex } from 'knex';
@@ -120,7 +120,7 @@ export class EmbeddingService implements IEmbeddingService {
       // 5. Generate embeddings using embedMany from 'ai'
       const texts = chunks.map(chunk => chunk.text);
       const { embeddings } = await embedMany({
-        model: openai.embedding('text-embedding-3-small'),
+        model: ollama.embedding('nomic-embed-text'),
         values: texts
       });
 
@@ -250,7 +250,7 @@ export class EmbeddingService implements IEmbeddingService {
                     metadata: r.metadata,
                   })),
                   queryText,
-                  openai('gpt-4o-mini'), // Choose appropriate model
+                  ollama('llama3.1:8b'), // Use Ollama chat model
                   { topK: limit }
                 );
 

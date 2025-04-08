@@ -20,7 +20,7 @@ class FilesService {
 
   async upload(file: File): Promise<ApiResponse<VectraFile>> {
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('files', file);
 
     return apiClient<ApiResponse<VectraFile>>(`${this.baseUrl}/upload`, {
       method: 'POST',

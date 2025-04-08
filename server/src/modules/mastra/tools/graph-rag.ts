@@ -10,7 +10,7 @@ export const graphRagTool = createGraphRAGTool({
   ...commonRagToolConfig,
   // Optional: Adjust graphOptions if needed for this specific tool
   // graphOptions: {
-  //   dimension: 1536, // Match your embedding model dimension
+  //   dimension: 768, // Match your embedding model dimension
   //   threshold: 0.7,
   //   randomWalkSteps: 100,
   //   restartProb: 0.15
