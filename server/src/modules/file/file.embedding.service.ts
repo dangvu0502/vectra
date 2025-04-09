@@ -1,18 +1,14 @@
-import { ollama } from 'ollama-ai-provider';
+// Removed direct Ollama imports
 import { MDocument, rerank } from '@mastra/rag'; // Import rerank
 import { embedMany } from 'ai';
 import type { Knex } from 'knex';
+// Removed direct ollama provider import
 import path from 'path';
-import type { File as DbFileType } from './file.schema';
 import { applyRRF, performKeywordSearch, performVectorSearch } from './embedding.query.strategies';
 import { createEmbeddingQueryRunner, type MetadataFilter } from './file.embedding.queries';
-// REMOVED: import { enrichChunkMetadata } from './embedding.metadata.utils';
-
-// REMOVED: Default chunking options are now dynamic
-// const DEFAULT_CHUNK_SIZE = 1000;
-// const DEFAULT_OVERLAP_SIZE = 200;
-const DEFAULT_OVERLAP_SIZE = 200;
-
+import type { File as DbFileType } from './file.schema';
+import { cogito, llamaIndexOllamaCogito, nomicEmbedText } from '@/core/llm-adapter';
+ 
 // Interface defining the service's responsibilities
 export interface IEmbeddingService {
   processFile(file: DbFileType): Promise<void>;
@@ -23,7 +19,6 @@ export interface IEmbeddingService {
     limit: number;
     collectionId?: string;
     searchMode?: 'vector' | 'keyword' | 'hybrid'; // Added search mode
-    // enableHeuristicReranking?: boolean; // REMOVED flag for optional reranking
     // Add optional filter parameters
     includeMetadataFilters?: MetadataFilter[];
     excludeMetadataFilters?: MetadataFilter[];
@@ -79,34 +74,62 @@ export class EmbeddingService implements IEmbeddingService {
       };
       const doc = MDocument.fromText(file.content, initialMetadata);
 
-      // 3. Configure Dynamic Chunking Options
-      let chunkParams: any = {
+      // Define base parameters including the constant extraction config
+      const baseChunkParams: any = {
+        size: 256, // Default size, overridden below where needed
+        overlap: 50, // Default overlap, overridden below where needed
         extract: {
-          fields: [
-            { name: 'summary', description: 'A brief 1-2 sentence summary of the chunk content' },
-            { name: 'keywords', description: 'Comma-separated list of 3-5 main keywords' }
-          ],
-          model: 'gpt-4o-mini' // Or 'gpt-3.5-turbo'
+          title: { llm: llamaIndexOllamaCogito, },     // Enable title extraction
+          questions: { llm: llamaIndexOllamaCogito }, // Enable Q&A extraction
+          keywords: { llm: llamaIndexOllamaCogito },  // Enable keyword extraction
         }
       };
 
+      let chunkParams: any;
+
+      // Determine strategy and specific overrides based on file type
       switch (fileType) {
         case '.md':
-          chunkParams = { ...chunkParams, strategy: 'markdown', headers: [['##', 'section_title']], size: 512, overlap: 50 };
+          chunkParams = {
+            ...baseChunkParams,
+            strategy: 'markdown',
+            headers: [['##', 'section_title']],
+            size: 512,
+          };
           break;
         case '.html': case '.htm':
-          chunkParams = { ...chunkParams, strategy: 'html', size: 512, overlap: 50 };
+          chunkParams = {
+            ...baseChunkParams,
+            strategy: 'html',
+            size: 512,
+          };
           break;
         case '.json':
-          chunkParams = { ...chunkParams, strategy: 'json', maxSize: 1024 };
+          // Note: 'maxSize' is specific to JSON strategy, 'size' might not apply
+          chunkParams = {
+            ...baseChunkParams,
+            strategy: 'json',
+            maxSize: 1024,
+            // Remove size/overlap if they don't apply to JSON strategy
+            size: undefined,
+            overlap: undefined,
+          };
           break;
         case '.tex':
-          chunkParams = { ...chunkParams, strategy: 'latex', size: 512, overlap: 50 };
+          chunkParams = {
+            ...baseChunkParams,
+            strategy: 'latex',
+            size: 512,
+          };
           break;
-        default:
-          chunkParams = { ...chunkParams, strategy: 'token', modelName: 'text-embedding-3-small', size: 256, overlap: 50 };
+        default: // Default to token strategy
+          chunkParams = {
+            ...baseChunkParams,
+            strategy: 'token',
+          };
           break;
       }
+
 
       // 4. Chunk the document with dynamic options
       let chunks: Array<{ text: string; metadata?: Record<string, any> }> = await doc.chunk(chunkParams);
@@ -115,12 +138,10 @@ export class EmbeddingService implements IEmbeddingService {
         return;
       }
 
-      // REMOVED: Call to enrichChunkMetadata
-
       // 5. Generate embeddings using embedMany from 'ai'
       const texts = chunks.map(chunk => chunk.text);
       const { embeddings } = await embedMany({
-        model: ollama.embedding('nomic-embed-text'),
+        model: nomicEmbedText, // Use singleton provider
         values: texts
       });
 
@@ -174,7 +195,6 @@ export class EmbeddingService implements IEmbeddingService {
     excludeMetadataFilters, // Added
     maxDistance,            // Added
     searchMode = 'vector',  // Added searchMode with default
-    // enableHeuristicReranking = false, // REMOVED flag with default
   }: {
     userId: string;
     queryText: string;
@@ -193,7 +213,7 @@ export class EmbeddingService implements IEmbeddingService {
     score?: number; // Combined score (RRF or rerank)
   }>> {
     try {
-      const runner = createEmbeddingQueryRunner(this.db);
+      // Removed unused runner creation: const runner = createEmbeddingQueryRunner(this.db);
       const kRRF = 60;
 
       let initialResults: Array<{
@@ -208,21 +228,21 @@ export class EmbeddingService implements IEmbeddingService {
       // --- Execute Searches based on Mode ---
       if (searchMode === 'vector') {
         initialResults = await performVectorSearch(
-          runner, userId, queryText, limit, collectionId,
+          this.db, userId, queryText, limit, collectionId, // Pass this.db
           includeMetadataFilters, excludeMetadataFilters, maxDistance
         );
       } else if (searchMode === 'keyword') {
         initialResults = await performKeywordSearch(
-          runner, userId, queryText, limit, collectionId
+          this.db, userId, queryText, limit, collectionId // Pass this.db
         );
       } else if (searchMode === 'hybrid') {
         const [vectorResults, keywordResults] = await Promise.all([
           performVectorSearch(
-            runner, userId, queryText, limit, collectionId,
+            this.db, userId, queryText, limit, collectionId, // Pass this.db
             includeMetadataFilters, excludeMetadataFilters, maxDistance
           ),
           performKeywordSearch(
-            runner, userId, queryText, limit, collectionId
+            this.db, userId, queryText, limit, collectionId // Pass this.db
           )
         ]);
         initialResults = applyRRF(vectorResults, keywordResults, limit, kRRF);
@@ -230,9 +250,7 @@ export class EmbeddingService implements IEmbeddingService {
         throw new Error(`Invalid search mode: ${searchMode}`);
       }
 
-      // --- Integrate Reranking ---
       let finalResults = initialResults; // Default to initial results
-
       if (initialResults.length > 0) {
         // Ensure metadata.text exists for semantic scoring
         // Assuming performVectorSearch/performKeywordSearch return metadata including 'text'
@@ -250,7 +268,7 @@ export class EmbeddingService implements IEmbeddingService {
                     metadata: r.metadata,
                   })),
                   queryText,
-                  ollama('llama3.1:8b'), // Use Ollama chat model
+                  cogito, // Use singleton instance for reranking
                   { topK: limit }
                 );
 
@@ -278,8 +296,7 @@ export class EmbeddingService implements IEmbeddingService {
              console.warn("No results with metadata.text available for reranking.");
         }
       }
-
-      return finalResults; // Return the potentially reranked results
+      return finalResults; // Return the potentially reranked results // Return initial results directly
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';

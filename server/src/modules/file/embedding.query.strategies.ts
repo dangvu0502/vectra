@@ -1,10 +1,9 @@
-import { ollama } from 'ollama-ai-provider';
+// Removed direct import of ollama provider
 import { embed } from 'ai';
-// Use ReturnType to get the type of the object returned by the factory function
-import { createEmbeddingQueryRunner, type MetadataFilter } from './file.embedding.queries';
-
-// Define the type for the query runner object
-type EmbeddingQueryRunner = ReturnType<typeof createEmbeddingQueryRunner>;
+import type { Knex } from 'knex'; // Import Knex type
+import { type MetadataFilter } from './file.embedding.queries'; // Keep MetadataFilter import
+import { findSimilarEmbeddings, findKeywordMatches } from './embedding.search.queries'; // Import search functions directly
+import { nomicEmbedText } from '@/core/llm-adapter';
 
 // Define a common result type for consistency
 type QueryResultItem = {
@@ -18,7 +17,7 @@ type QueryResultItem = {
 
 // --- Vector Search Logic ---
 export async function performVectorSearch(
-  runner: EmbeddingQueryRunner,
+  dbOrTrx: Knex | Knex.Transaction, // Accept dbOrTrx instead of runner
   userId: string,
   queryText: string,
   limit: number,
@@ -28,13 +27,15 @@ export async function performVectorSearch(
   maxDistance?: number
 ): Promise<QueryResultItem[]> {
   const { embedding } = await embed({
-    model: ollama.embedding('nomic-embed-text'),
+    model: nomicEmbedText, // Use the singleton provider
     value: queryText,
   });
   if (!embedding) {
     throw new Error('Failed to generate embedding for query text.');
   }
-  return runner.findSimilarEmbeddings(
+  // Call the imported function directly
+  return findSimilarEmbeddings(
+    dbOrTrx, // Pass dbOrTrx
     userId, embedding, limit, collectionId,
     includeMetadataFilters, excludeMetadataFilters, maxDistance
   );
@@ -42,14 +43,16 @@ export async function performVectorSearch(
 
 // --- Keyword Search Logic ---
 export async function performKeywordSearch(
-  runner: EmbeddingQueryRunner,
+  dbOrTrx: Knex | Knex.Transaction, // Accept dbOrTrx instead of runner
   userId: string,
   queryText: string,
   limit: number,
   collectionId?: string
   // TODO: Add metadata filters if needed in the future
 ): Promise<QueryResultItem[]> {
-  return runner.findKeywordMatches(
+  // Call the imported function directly
+  return findKeywordMatches(
+    dbOrTrx, // Pass dbOrTrx
     userId, queryText, limit, collectionId
   );
 }

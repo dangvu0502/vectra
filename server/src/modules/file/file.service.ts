@@ -41,12 +41,10 @@ class FileService implements IFileService {
   private static instance: FileService | null = null;
   private readonly db: Knex;
   private readonly embeddingService: IEmbeddingService;
-  // Removed firecrawlService dependency
 
   private constructor(db: Knex, embeddingService: IEmbeddingService) { // Removed firecrawlSvc parameter
     this.db = db;
     this.embeddingService = embeddingService;
-    // Removed firecrawlService initialization
   }
 
   static getInstance(db: Knex, embeddingService: IEmbeddingService): FileService { // Removed firecrawlSvc parameter
@@ -142,8 +140,6 @@ class FileService implements IFileService {
     }
   }
 
-  // Removed the entire ingestUrl method
-
   async query(options: QueryOptions = {}): Promise<{ files: DbFileType[]; total: number }> {
     const {
       q,
@@ -210,8 +206,6 @@ class FileService implements IFileService {
       throw dbError;
     }
   }
-
-  // REMOVED methods: addFileToCollection, removeFileFromCollection, getFilesInCollection
 
   // Updated method to use Collection type and query from collections module
   async getCollectionsForFile(fileId: string, userId: string): Promise<Collection[]> {

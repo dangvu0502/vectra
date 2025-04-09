@@ -13,7 +13,6 @@ export type MetadataFilter = {
   pattern?: string; // For pattern match ('LIKE' or 'NOT LIKE')
 };
 
-// Removed local constant declarations
 
 /**
  * Inserts multiple text embeddings in a transaction.
@@ -55,7 +54,6 @@ const _insertTextEmbeddingsQuery = async ( // Make internal
   await Promise.all(textEmbeddingInserts);
 };
 
-// Removed _upsertFileKnowledgeIndexQuery as KNOWLEDGE_METADATA_INDEX_TABLE is removed
 
 /**
  * Finds a collection by its ID within a transaction.
@@ -107,45 +105,11 @@ const _findFileForDeleteCheckQuery = async ( // Make internal
     .select('id') // Removed collection_id from select
     .where('id', fileId)
     .first();
-};
+ };
 
-/**
- * Counts remaining files in a collection, excluding a specific file ID, within a transaction.
- * @param trx - Knex transaction object.
- * @param collectionId - The collection ID.
- * @param excludeFileId - The file ID to exclude from the count.
- * @returns The count of remaining files.
- */
-const _countRemainingFilesInCollectionQuery = async ( // Make internal
-  dbOrTrx: Knex | Knex.Transaction, // Accept db or trx
-  collectionId: string,
-  excludeFileId: string
-): Promise<number> => {
-  // TODO: This query is now incorrect as files don't have collection_id.
-  // It needs refactoring to use the collection_files join table.
-  // Removing the clause fixes the TS error for now.
-  const result = await dbOrTrx(FILES_TABLE) // Use dbOrTrx
-    // .where('collection_id', collectionId) // Removed this line
-    .whereNot('id', excludeFileId)
-    .count('id as count')
-    .first();
-  return result ? Number(result.count) : 0;
-};
-
-// Removed _deleteCollectionKnowledgeIndexQuery as KNOWLEDGE_METADATA_INDEX_TABLE is removed
-
-// --- REMOVED _findSimilarEmbeddingsQuery ---
-// The logic is now in embedding.search.queries.ts
-
-// --- REMOVED _findKeywordMatchesQuery ---
-// The logic is now in embedding.search.queries.ts
-
-
-// --- Query Runner ---
-
-/**
- * Creates a query runner instance bound to a specific Knex connection or transaction.
- * @param dbOrTrx - The Knex instance or transaction object.
+ /**
+  * Creates a query runner instance bound to a specific Knex connection or transaction.
+  * @param dbOrTrx - The Knex instance or transaction object.
  * @returns An object with methods to execute embedding-related queries.
  */
 export const createEmbeddingQueryRunner = (dbOrTrx: Knex | Knex.Transaction) => {
@@ -156,29 +120,8 @@ export const createEmbeddingQueryRunner = (dbOrTrx: Knex | Knex.Transaction) => 
       embeddings: number[][]
     ) => _insertTextEmbeddingsQuery(dbOrTrx, file, chunks, embeddings),
 
-    // Use the imported search functions
-    findSimilarEmbeddings: (
-      userId: string,
-      embedding: number[],
-      limit: number,
-      collectionId?: string,
-      includeMetadataFilters?: MetadataFilter[],
-      excludeMetadataFilters?: MetadataFilter[],
-      maxDistance?: number
-    ) => findSimilarEmbeddings( // Use imported function
-        dbOrTrx, userId, embedding, limit, collectionId,
-        includeMetadataFilters, excludeMetadataFilters, maxDistance
-      ),
-
-    findKeywordMatches: (
-      userId: string,
-      queryText: string,
-      limit: number,
-      collectionId?: string,
-      ftsConfig?: string
-    ) => findKeywordMatches( // Use imported function
-        dbOrTrx, userId, queryText, limit, collectionId, ftsConfig
-      ),
+    // Removed the direct wrappers for findSimilarEmbeddings and findKeywordMatches
+    // These are now handled by embedding.query.strategies.ts using the runner
 
     // Removed upsertFileKnowledgeIndex
 
@@ -195,14 +138,8 @@ export const createEmbeddingQueryRunner = (dbOrTrx: Knex | Knex.Transaction) => 
     // Removed deleteFileKnowledgeIndex
 
     findFileForDeleteCheck: (
-      fileId: string
-    ) => _findFileForDeleteCheckQuery(dbOrTrx, fileId),
+       fileId: string
+     ) => _findFileForDeleteCheckQuery(dbOrTrx, fileId),
 
-    countRemainingFilesInCollection: (
-      collectionId: string,
-      excludeFileId: string
-    ) => _countRemainingFilesInCollectionQuery(dbOrTrx, collectionId, excludeFileId),
-
-    // Removed deleteCollectionKnowledgeIndex
-  };
-};
+   };
+ };

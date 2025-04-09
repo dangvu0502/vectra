@@ -25,9 +25,6 @@ import { db } from '@/database/connection'; // Import the database connection in
 import { EmbeddingService } from '@/modules/file/file.embedding.service';
 const embeddingService = EmbeddingService.getInstance(db); // Use the imported db instance
 
-// --- REMOVED Local Zod Schema Definitions (moved to types.ts) ---
-
-// --- REMOVED ensureAuthenticated middleware (moved to auth.middleware.ts) ---
 
 export const collectionsController = {
   // POST /collections - Create a new collection

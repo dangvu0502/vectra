@@ -1,5 +1,5 @@
+import { COLLECTION_FILES_TABLE, TEXT_EMBEDDINGS_TABLE } from '@/config/constants';
 import type { Knex } from 'knex';
-import { COLLECTIONS_TABLE, COLLECTION_FILES_TABLE, TEXT_EMBEDDINGS_TABLE } from '@/config/constants';
 import type { MetadataFilter } from './file.embedding.queries'; // Import shared type
 
 // Type for the result items (consistent with the original file)
@@ -12,9 +12,9 @@ type SearchResultItem = {
 };
 
 /**
- * INTERNAL: Performs vector similarity search on text embeddings.
+ * Performs vector similarity search on text embeddings.
  */
-const _findSimilarEmbeddingsInternal = async (
+export const findSimilarEmbeddings = async ( // Renamed from _findSimilarEmbeddingsInternal
   dbOrTrx: Knex | Knex.Transaction,
   userId: string,
   embedding: number[],
@@ -72,9 +72,9 @@ const _findSimilarEmbeddingsInternal = async (
 
 
 /**
- * INTERNAL: Performs Full-Text Search (FTS) on text embeddings.
+ * Performs Full-Text Search (FTS) on text embeddings.
  */
-const _findKeywordMatchesInternal = async (
+export const findKeywordMatches = async ( // Renamed from _findKeywordMatchesInternal
   dbOrTrx: Knex | Knex.Transaction,
   userId: string,
   queryText: string,
@@ -107,39 +107,3 @@ const _findKeywordMatchesInternal = async (
   return results as Array<SearchResultItem & { rank: number }>;
 };
 
-// --- Exported Wrapper Functions ---
-
-/**
- * EXPORTED: Performs vector similarity search.
- */
-export const findSimilarEmbeddings = (
-  dbOrTrx: Knex | Knex.Transaction,
-  userId: string,
-  embedding: number[],
-  limit: number,
-  collectionId?: string,
-  includeMetadataFilters?: MetadataFilter[],
-  excludeMetadataFilters?: MetadataFilter[],
-  maxDistance?: number
-): Promise<Array<SearchResultItem & { distance: number }>> => {
-  return _findSimilarEmbeddingsInternal(
-    dbOrTrx, userId, embedding, limit, collectionId,
-    includeMetadataFilters, excludeMetadataFilters, maxDistance
-  );
-};
-
-/**
- * EXPORTED: Performs Full-Text Search (FTS).
- */
-export const findKeywordMatches = (
-  dbOrTrx: Knex | Knex.Transaction,
-  userId: string,
-  queryText: string,
-  limit: number,
-  collectionId?: string,
-  ftsConfig?: string
-): Promise<Array<SearchResultItem & { rank: number }>> => {
-  return _findKeywordMatchesInternal(
-    dbOrTrx, userId, queryText, limit, collectionId, ftsConfig
-  );
-};
