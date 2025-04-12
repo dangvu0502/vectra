@@ -101,3 +101,71 @@ export function applyRRF(
 
   return combined.slice(0, limit);
 }
+
+// --- Reranking Logic (Currently Disabled) ---
+// TODO: Re-enable reranking by uncommenting this section and the corresponding call
+//       in EmbeddingService.queryEmbeddings. Ensure type compatibility issues are resolved.
+/*
+import { rerank } from '@mastra/rag'; // Import rerank
+import type { LanguageModelV1 } from 'ai'; // Import LanguageModelV1 from the 'ai' package
+
+export async function performReranking(
+  initialResults: QueryResultItem[],
+  queryText: string,
+  rerankLLM: LanguageModelV1, // Use the correct type
+  limit: number
+): Promise<QueryResultItem[]> {
+  if (!initialResults || initialResults.length === 0) {
+    return [];
+  }
+
+  const resultsForReranking = initialResults.filter(r => r.metadata?.text);
+  if (resultsForReranking.length !== initialResults.length) {
+    console.warn("Some initial results missing metadata.text, excluding from reranking.");
+  }
+
+  if (resultsForReranking.length === 0) {
+    console.warn("No results with metadata.text available for reranking. Returning initial results.");
+    // Decide whether to return initialResults or empty array based on desired behavior
+    return initialResults; // Or return [] if reranking is mandatory
+  }
+
+  try {
+    const rerankedResultsData = await rerank(
+      resultsForReranking.map(r => ({
+        id: r.vector_id,
+        // Use distance if available (lower is better -> higher initial score), otherwise score or 0
+        score: r.distance !== undefined ? 1 - r.distance : (r.score || 0),
+        metadata: r.metadata,
+      })),
+      queryText,
+      rerankLLM, // Use the passed LLM instance
+      { topK: limit }
+    );
+
+    // Map back to QueryResultItem format
+    const finalRerankedResults = rerankedResultsData
+      .map(r => {
+        const fileId = r.result.metadata?.file_id;
+        if (typeof fileId === 'string') {
+          return {
+            vector_id: r.result.id,
+            file_id: fileId,
+            metadata: r.result.metadata || {},
+            score: r.score, // Use the score from the reranker
+            // Distance/rank from original search are less relevant after rerank
+          };
+        }
+        console.warn(`Missing file_id in reranked result metadata for vector_id: ${r.result.id}`);
+        return null;
+      })
+      .filter(result => result !== null) as QueryResultItem[]; // Filter out nulls and assert type
+
+    return finalRerankedResults;
+
+  } catch (rerankError: any) {
+    console.error(`Reranking failed: ${rerankError instanceof Error ? rerankError.message : rerankError}. Returning initial (pre-rerank) results.`);
+    return initialResults; // Fallback to initial results on error
+  }
+}
+*/

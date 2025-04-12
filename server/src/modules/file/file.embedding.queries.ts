@@ -20,23 +20,28 @@ export type MetadataFilter = {
  * @param file - The file object associated with the embeddings.
  * @param chunks - Array of text chunks.
  * @param embeddings - Array of corresponding embeddings.
+ * @returns Array of objects containing the generated vectorId and metadata for each chunk.
  */
-const _insertTextEmbeddingsQuery = async ( // Make internal
-  dbOrTrx: Knex | Knex.Transaction, // Accept db or trx
+const _insertTextEmbeddingsQuery = async (
+  dbOrTrx: Knex | Knex.Transaction,
   file: DbFileType,
   chunks: { text: string; metadata?: Record<string, any> }[],
   embeddings: number[][]
-): Promise<void> => {
+): Promise<{ vectorId: string; metadata: Record<string, any> }[]> => { // Updated return type
+  const insertedChunkData: { vectorId: string; metadata: Record<string, any> }[] = [];
+
   const textEmbeddingInserts = chunks.map((chunk, i) => {
-    const vectorId = `${file.id}_chunk_${i}`;
+    const vectorId = `${file.id}_chunk_${i}`; // Generate ID
     const additionalMetadata = {
       chunk_index: i,
-      chunk_text: chunk.text, // Store chunk text in metadata
+      chunk_text: chunk.text,
       ...(chunk.metadata || {})
     };
 
+    // Store data to be returned
+    insertedChunkData.push({ vectorId, metadata: additionalMetadata });
+
     // Use the provided db or trx instance
-    // Add chunk_text to INSERT statement
     return dbOrTrx.raw(`
       INSERT INTO ${TEXT_EMBEDDINGS_TABLE}
       (vector_id, user_id, file_id, embedding, metadata, chunk_text, created_at, updated_at)
@@ -52,6 +57,8 @@ const _insertTextEmbeddingsQuery = async ( // Make internal
   });
 
   await Promise.all(textEmbeddingInserts);
+
+  return insertedChunkData; // Return the collected data
 };
 
 
@@ -114,11 +121,13 @@ const _findFileForDeleteCheckQuery = async ( // Make internal
  */
 export const createEmbeddingQueryRunner = (dbOrTrx: Knex | Knex.Transaction) => {
   return {
+    // Update the signature in the runner object as well
     insertTextEmbeddings: (
       file: DbFileType,
       chunks: { text: string; metadata?: Record<string, any> }[],
       embeddings: number[][]
-    ) => _insertTextEmbeddingsQuery(dbOrTrx, file, chunks, embeddings),
+    ): Promise<{ vectorId: string; metadata: Record<string, any> }[]> => // Updated return type here
+      _insertTextEmbeddingsQuery(dbOrTrx, file, chunks, embeddings),
 
     // Removed the direct wrappers for findSimilarEmbeddings and findKeywordMatches
     // These are now handled by embedding.query.strategies.ts using the runner

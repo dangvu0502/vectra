@@ -2,12 +2,14 @@ import express from 'express';
 import morgan from 'morgan';
 import cors from 'cors';
 import session from 'express-session';
-import { initializeDatabase } from './database/connection'; 
-import { passport } from './modules/auth'; 
-import { routes } from './routes'; 
+// Removed initializeDatabase import, handled by bootstrap
+import { passport } from './modules/auth';
+import { routes } from './routes';
 import { env } from './config/environment';
+import { initializeApp } from './core/bootstrap'; // Import the new bootstrap function
+// Removed fileURLToPath and resolve imports, no longer needed here
 
-const app = express();
+export const app = express(); // Export app for bootstrap and potential tests
 
 app.use(cors());
 app.use(express.json());
@@ -32,17 +34,9 @@ app.use(passport.session());
 // Mount the aggregated routes
 app.use('/api/', routes);
 
-const PORT = process.env.PORT || 3000;
-
-// Initialize DB before starting the server
-initializeDatabase().then(() => {
-  app.listen(PORT, () => {
-    console.log('🚀 Server Status:');
-    console.log(`- Running on port: ${PORT}`);
-  console.log(`- Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`- Document API: http://localhost:${PORT}/api/v1/files`);
-  console.log(`- Knowledge API: http://localhost:${PORT}/api/v1/knowledge/query`);
-  // Chat API temporarily disabled
-  // console.log(`- Chat API: http://localhost:${PORT}/api/v1/chat`);
-});
-}); // Add missing closing parenthesis and brace for .then()
+  initializeApp().catch((error) => {
+    // Error is already logged in initializeApp, just ensure exit
+    console.error("Application failed to initialize.");
+    process.exit(1);
+  });
+// No need to export app again, already exported at the top

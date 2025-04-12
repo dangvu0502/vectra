@@ -207,15 +207,29 @@ export const collectionsController = {
   async queryCollection(req: Request, res: Response, next: NextFunction) {
     try {
       const { collectionId } = CollectionIdParamSchema.parse(req.params);
-      const { queryText, limit } = QueryCollectionBodySchema.parse(req.body);
+      // Parse the full body including optional graph params
+      const {
+        queryText,
+        limit,
+        enableGraphSearch,
+        graphDepth,
+        graphTopN,
+        graphRelationshipTypes
+      } = QueryCollectionBodySchema.parse(req.body);
       const user = req.user as UserProfile;
 
-      // Call the embedding service to perform the query
+      // Call the embedding service, passing all parameters
       const results = await embeddingService.queryEmbeddings({
         userId: user.id,
         queryText,
         limit,
         collectionId, // Pass the collection ID for filtering
+        // Pass graph parameters
+        enableGraphSearch,
+        graphDepth,
+        graphTopN,
+        graphRelationshipTypes,
+        // TODO: Consider adding searchMode, maxDistance etc. to the API if needed
       });
 
       res.status(200).json({

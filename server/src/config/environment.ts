@@ -9,7 +9,15 @@ const envSchema = z.object({
   GOOGLE_CLIENT_SECRET: z.string(),
   API_BASE_URL: z.string().default('http://localhost:3000/api'),
   SESSION_SECRET: z.string(),
-  // Removed FIRECRAWL_API_KEY line
+
+  // ArangoDB Connection Details
+  ARANGO_URL: z.string().default('http://localhost:8529'),
+  ARANGO_DB_NAME: z.string().default('vectra_graph'),
+  ARANGO_USERNAME: z.string().default('root'),
+  ARANGO_PASSWORD: z.string(),
+
+  // Redis Connection for BullMQ
+  REDIS_URL: z.string().url().default('redis://localhost:6379'),
 });
 
 export const env = envSchema.parse(process.env);

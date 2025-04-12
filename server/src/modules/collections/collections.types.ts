@@ -39,6 +39,11 @@ export type CollectionIdParam = z.infer<typeof CollectionIdParamSchema>;
 export const QueryCollectionBodySchema = z.object({
   queryText: z.string().min(1, "Query text cannot be empty"),
   limit: z.number().int().positive().optional().default(10), // Default limit
+  // --- Optional Graph Search Parameters ---
+  enableGraphSearch: z.boolean().optional(), // Removed .default(false)
+  graphDepth: z.number().int().min(1).max(5).optional().default(1), // Limit depth for performance
+  graphTopN: z.number().int().min(1).max(10).optional().default(3), // Limit start nodes
+  graphRelationshipTypes: z.array(z.string()).optional(), // Optional array of strings
 });
 export type QueryCollectionBodyInput = z.infer<typeof QueryCollectionBodySchema>;
 
