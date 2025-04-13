@@ -1,11 +1,8 @@
-import { Worker, Job } from 'bullmq';
-import { env } from '@/config/environment';
-import { LLM_PROCESSING_QUEUE_NAME, getRedisConnectionOptions } from '../queues'; // Import queue name and connection helper
-import type { LlmJobData } from '../queues'; // Type-only import for job data
+import { languageModel } from '@/core/llm-adapter'; // Assuming LLM adapter export
 import { arangoDbService } from '@/modules/arangodb/arangodb.service'; // Assuming service export
-import { cogito } from '@/core/llm-adapter'; // Assuming LLM adapter export
-// Potentially import vector search functionality if needed for finding related chunks
-// import { FileEmbeddingService } from '@/modules/file/file.embedding.service';
+import { Job, Worker } from 'bullmq';
+import type { LlmJobData } from '../queues'; // Type-only import for job data
+import { LLM_PROCESSING_QUEUE_NAME, getRedisConnectionOptions } from '../queues'; // Import queue name and connection helper
 
 console.log('Initializing LLM Processing Worker...');
 
@@ -31,7 +28,7 @@ const processLlmJob = async (job: Job<LlmJobData>) => {
       console.log(`[Job ${job.id}] Calling LLM for relationship extraction...`);
       // Assuming 'doGenerate' expects LanguageModelV1CallOptions
       // and returns an object with a 'text' property containing the response.
-      const llmResponse = await cogito.doGenerate({
+      const llmResponse = await languageModel.doGenerate({
          inputFormat: 'messages', // Specify input format
          mode: { type: 'regular' }, // Specify generation mode
          prompt: [{ role: 'user', content: [{ type: 'text', text: prompt }] }] // Pass structured prompt
@@ -91,7 +88,7 @@ const processLlmJob = async (job: Job<LlmJobData>) => {
 
       // 2. Call LLM
       console.log(`[Job ${job.id}] Calling LLM for entity extraction...`);
-      const entityResponse = await cogito.doGenerate({
+      const entityResponse = await languageModel.doGenerate({
          inputFormat: 'messages',
          mode: { type: 'regular' },
          prompt: [{ role: 'user', content: [{ type: 'text', text: entityPrompt }] }]

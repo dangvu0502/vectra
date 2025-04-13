@@ -1,9 +1,9 @@
 // Removed direct Ollama imports
-import { MDocument, rerank } from '@mastra/rag'; // Import rerank
+import { MDocument } from '@mastra/rag'; // Import rerank
 import { embedMany } from 'ai';
 import type { Knex } from 'knex';
 // Removed direct ollama provider import
-import { cogito, nomicEmbedText } from '@/core/llm-adapter';
+import { languageModel, embeddingModel } from '@/core/llm-adapter';
 // Removed aql, arangoDbClient, getEdgesCollection, getNodesCollection imports
 import path from 'path';
 import { arangoDbService } from '../arangodb/arangodb.service.js'; // Import the ArangoDB service
@@ -104,7 +104,7 @@ export class EmbeddingService implements IEmbeddingService {
       // 5. Generate embeddings using embedMany from 'ai'
       const texts = chunks.map(chunk => chunk.text);
       const { embeddings } = await embedMany({
-        model: nomicEmbedText, // Use singleton provider
+        model: embeddingModel,
         values: texts
       });
 
@@ -344,7 +344,7 @@ export class EmbeddingService implements IEmbeddingService {
 
         try {
           console.log(`Calling LLM for synthesis based on ${Math.min(finalResults.length, contextLimit)} results...`);
-          const synthesisResponse = await cogito.doGenerate({
+          const synthesisResponse = await languageModel.doGenerate({
             inputFormat: 'messages',
             mode: { type: 'regular' },
             prompt: [{ role: 'user', content: [{ type: 'text', text: synthesisPrompt }] }]
