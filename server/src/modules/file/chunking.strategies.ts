@@ -1,5 +1,3 @@
-import { cogito } from '@/core/llm-adapter'; // Assuming LLM might be needed for future extraction strategies
-
 // Base parameters can be defined here or passed in
 export const defaultBaseChunkParams = {
   size: 256, // Default chunk size in tokens/characters depending on strategy

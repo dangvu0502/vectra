@@ -18,6 +18,7 @@ const envSchema = z.object({
 
   // Redis Connection for BullMQ
   REDIS_URL: z.string().url().default('redis://localhost:6379'),
+  OPENROUTER_API_KEY: z.string(),
 });
 
 export const env = envSchema.parse(process.env);

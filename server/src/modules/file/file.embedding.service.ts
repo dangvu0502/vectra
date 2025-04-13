@@ -320,7 +320,8 @@ export class EmbeddingService implements IEmbeddingService {
       // --- LLM Synthesis Step (Step 4.2) ---
       if (finalResults.length > 0) {
         // Gather context from top results (e.g., top 3-5)
-        const contextLimit = 5; // How many top results to use for context
+        console.log(`DEBUG: Final results before LLM synthesis: ${JSON.stringify(finalResults.length)}`); // Log final results before synthesis
+        const contextLimit = finalResults.length; // How many top results to use for context
         let contextText = "";
         for (let i = 0; i < Math.min(finalResults.length, contextLimit); i++) {
           const result = finalResults[i];

@@ -3,7 +3,7 @@ import { embed } from 'ai';
 import type { Knex } from 'knex'; // Import Knex type
 import { type MetadataFilter } from './file.embedding.queries'; // Keep MetadataFilter import
 import { findSimilarEmbeddings, findKeywordMatches } from './embedding.search.queries'; // Import search functions directly
-import { nomicEmbedText } from '@/core/llm-adapter';
+import { embeddingModel } from '@/core/llm-adapter';
 
 // Define a common result type for consistency
 type QueryResultItem = {
@@ -27,7 +27,7 @@ export async function performVectorSearch(
   maxDistance?: number
 ): Promise<QueryResultItem[]> {
   const { embedding } = await embed({
-    model: nomicEmbedText, // Use the singleton provider
+    model: embeddingModel, // Use the singleton provider
     value: queryText,
   });
   if (!embedding) {
