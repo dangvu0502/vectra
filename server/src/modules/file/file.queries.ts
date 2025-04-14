@@ -1,8 +1,10 @@
 import { db } from '@/database/connection';
+// Removed duplicate: import { db } from '@/database/connection';
+import { PG_TABLE_NAMES } from '@/database/constants'; // Import PG constants
 import type { Knex } from 'knex';
 import type { File as DbFileType, QueryOptions } from './file.schema'; // Keep using types from model
 import { fileSchema, querySchema } from './file.schema'; // Import necessary schemas
-import { FILES_TABLE } from '@/config/constants'; // Import table constant
+// Removed unused import: import { FILES_TABLE } from '@/config/constants';
 
 /**
  * Inserts a new file record into the database.
@@ -14,7 +16,7 @@ export const insertFileQuery = async (
   fileData: Omit<DbFileType, 'created_at' | 'updated_at'> & { created_at?: Date, updated_at?: Date }, // Adjust type slightly for insertion flexibility
   trx?: Knex.Transaction
 ): Promise<DbFileType> => {
-  const queryBuilder = trx ? trx(FILES_TABLE) : db(FILES_TABLE);
+  const queryBuilder = trx ? trx(PG_TABLE_NAMES.FILES) : db(PG_TABLE_NAMES.FILES);
   const [insertedRecord] = await queryBuilder
     .insert({
       ...fileData,
@@ -37,7 +39,7 @@ export const updateFileEmbeddingSuccessQuery = async (
   timestamp: string,
   trx?: Knex.Transaction
 ): Promise<number> => {
-  const queryBuilder = trx ? trx(FILES_TABLE) : db(FILES_TABLE);
+  const queryBuilder = trx ? trx(PG_TABLE_NAMES.FILES) : db(PG_TABLE_NAMES.FILES);
   return queryBuilder
     .where({ id: fileId })
     .update({
@@ -58,7 +60,7 @@ export const updateFileEmbeddingErrorQuery = async (
   errorMsg: string,
   trx?: Knex.Transaction
 ): Promise<number> => {
-  const queryBuilder = trx ? trx(FILES_TABLE) : db(FILES_TABLE);
+  const queryBuilder = trx ? trx(PG_TABLE_NAMES.FILES) : db(PG_TABLE_NAMES.FILES);
   return queryBuilder
     .where({ id: fileId })
     .update({
@@ -87,8 +89,8 @@ export const queryFilesQuery = async (
   const limitNum = parseInt(limit, 10);
   const skip = (pageNum > 0 ? pageNum - 1 : 0) * limitNum;
 
-  let queryBuilder = db(FILES_TABLE);
-  let countQueryBuilder = db(FILES_TABLE); // Separate builder for count
+  let queryBuilder = db(PG_TABLE_NAMES.FILES);
+  let countQueryBuilder = db(PG_TABLE_NAMES.FILES); // Separate builder for count
 
   if (q) {
     const searchTerm = `%${q}%`;
@@ -125,7 +127,7 @@ export const findFileByIdQuery = async (
   id: string,
   trx?: Knex.Transaction
 ): Promise<DbFileType | null> => {
-  const queryBuilder = trx ? trx(FILES_TABLE) : db(FILES_TABLE);
+  const queryBuilder = trx ? trx(PG_TABLE_NAMES.FILES) : db(PG_TABLE_NAMES.FILES);
   const dbFile = await queryBuilder
     .where({ id })
     .first();
@@ -142,47 +144,11 @@ export const deleteFileByIdQuery = async (
   id: string,
   trx?: Knex.Transaction
 ): Promise<number> => {
-  const queryBuilder = trx ? trx(FILES_TABLE) : db(FILES_TABLE);
+  const queryBuilder = trx ? trx(PG_TABLE_NAMES.FILES) : db(PG_TABLE_NAMES.FILES);
   return queryBuilder
     .where({ id })
     .delete();
 };
 
-// --- Collection File Link Queries (Moved to collections.queries.ts) ---
-// Queries related to the collection_files join table are now in collections.queries.ts
-// Remove addFileToCollectionLinkQuery, removeFileFromCollectionLinkQuery, findFilesByCollectionIdQuery
-
-const COLLECTION_FILES_TABLE = 'collection_files'; // Keep for findCollectionsByFileIdQuery if kept here
-
-/**
- * Creates a link between a file and a collection.
- * @param fileId - The ID of the file.
- * @param collectionId - The ID of the collection.
- * @param trx - Optional transaction object.
-*/
-
-/**
- * Finds all collections associated with a specific file ID for a given user. (Kept in file module)
- * Joins collections with collection_files and files to ensure ownership.
- * @param fileId - The ID of the file.
- * @param userId - The ID of the user owning the file.
- * @param trx - Optional transaction object.
- * @returns An array of collection records (you might need to import Collection type).
- */
-// Assuming Collection type is available or imported
-export const findCollectionsByFileIdQuery = async (
-  fileId: string,
-  userId: string,
-  trx?: Knex.Transaction
-): Promise<any[]> => { // Replace 'any[]' with 'Collection[]' after importing
-  const queryBuilder = trx ? trx('collections') : db('collections');
-  const dbCollections = await queryBuilder
-    .select(`collections.*`) // Select all columns from collections table
-    .innerJoin(COLLECTION_FILES_TABLE, `collections.id`, `${COLLECTION_FILES_TABLE}.collection_id`)
-    .innerJoin(FILES_TABLE, `${COLLECTION_FILES_TABLE}.file_id`, `${FILES_TABLE}.id`) // Join files to check ownership
-    .where(`${COLLECTION_FILES_TABLE}.file_id`, fileId)
-    .andWhere(`${FILES_TABLE}.user_id`, userId); // Ensure user owns the file
-
-  // TODO: Validate results against CollectionSchema if imported
-  return dbCollections;
-};
+// --- Collection File Link Queries (Moved to collections.queries.ts as per comment) ---
+// Removing the duplicated findCollectionsByFileIdQuery function from this file.

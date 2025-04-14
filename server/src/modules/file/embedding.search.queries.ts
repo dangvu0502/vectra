@@ -1,4 +1,5 @@
-import { COLLECTION_FILES_TABLE, TEXT_EMBEDDINGS_TABLE } from '@/config/constants';
+import { PG_TABLE_NAMES } from '@/database/constants'; // Import PG constants
+// Removed incorrect import: import { COLLECTION_FILES_TABLE, TEXT_EMBEDDINGS_TABLE } from '@/config/constants';
 import type { Knex } from 'knex';
 import type { MetadataFilter } from './file.embedding.queries'; // Import shared type
 
@@ -26,7 +27,7 @@ export const findSimilarEmbeddings = async ( // Renamed from _findSimilarEmbeddi
 ): Promise<Array<SearchResultItem & { distance: number }>> => { // Ensure distance is non-optional here
   const queryEmbeddingString = JSON.stringify(embedding);
 
-  let query = dbOrTrx(`${TEXT_EMBEDDINGS_TABLE} as te`)
+  let query = dbOrTrx(`${PG_TABLE_NAMES.TEXT_EMBEDDINGS} as te`)
     .select(
       'te.vector_id',
       'te.file_id',
@@ -37,7 +38,7 @@ export const findSimilarEmbeddings = async ( // Renamed from _findSimilarEmbeddi
 
   if (collectionId) {
     query = query
-      .join(`${COLLECTION_FILES_TABLE} as cf`, 'te.file_id', 'cf.file_id')
+      .join(`${PG_TABLE_NAMES.COLLECTION_FILES} as cf`, 'te.file_id', 'cf.file_id')
       .where('cf.collection_id', collectionId);
   }
 
@@ -84,7 +85,7 @@ export const findKeywordMatches = async ( // Renamed from _findKeywordMatchesInt
 ): Promise<Array<SearchResultItem & { rank: number }>> => { // Ensure rank is non-optional here
   const tsQuery = dbOrTrx.raw(`websearch_to_tsquery(?, ?)`, [ftsConfig, queryText]);
 
-  let query = dbOrTrx(`${TEXT_EMBEDDINGS_TABLE} as te`)
+  let query = dbOrTrx(`${PG_TABLE_NAMES.TEXT_EMBEDDINGS} as te`)
     .select(
       'te.vector_id',
       'te.file_id',
@@ -96,7 +97,7 @@ export const findKeywordMatches = async ( // Renamed from _findKeywordMatchesInt
 
   if (collectionId) {
     query = query
-      .join(`${COLLECTION_FILES_TABLE} as cf`, 'te.file_id', 'cf.file_id')
+      .join(`${PG_TABLE_NAMES.COLLECTION_FILES} as cf`, 'te.file_id', 'cf.file_id')
       .where('cf.collection_id', collectionId);
   }
 
@@ -106,4 +107,3 @@ export const findKeywordMatches = async ( // Renamed from _findKeywordMatchesInt
   const results = await query;
   return results as Array<SearchResultItem & { rank: number }>;
 };
-

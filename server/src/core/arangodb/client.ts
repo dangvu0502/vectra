@@ -1,5 +1,6 @@
-import { Database } from 'arangojs';
+import { Database } from 'arangojs'; // Removed Collection type import
 import { env } from '../../config/environment.js'; // Adjust path as needed
+import { ARANGO_COLLECTION_NAMES } from '../../config/constants.js'; // Import Arango constants
 
 console.log('Initializing ArangoDB client...');
 console.log('ArangoDB URL:', env.ARANGO_URL);
@@ -28,16 +29,16 @@ export const getNodesCollection = () => {
   if (!arangoDbClient) {
     throw new Error('ArangoDB client not initialized');
   }
-  // Collection names as defined in the plan
-  return arangoDbClient.collection('vb_nodes');
+  // Use constant for collection name
+  return arangoDbClient.collection(ARANGO_COLLECTION_NAMES.NODES);
 };
 
 export const getEdgesCollection = () => {
   if (!arangoDbClient) {
     throw new Error('ArangoDB client not initialized');
   }
-  // Collection names as defined in the plan
-  return arangoDbClient.collection('vb_edges');
+  // Use constant for collection name
+  return arangoDbClient.collection(ARANGO_COLLECTION_NAMES.EDGES);
 };
 
 // Function to ensure database, collections, and indexes exist
@@ -50,8 +51,8 @@ export async function ensureCollectionsAndIndexes(dbInstance: Database) {
   console.log("Ensuring ArangoDB database, collections, and indexes...");
 
   const targetDbName = env.ARANGO_DB_NAME;
-  const nodesCollectionName = 'vb_nodes';
-  const edgesCollectionName = 'vb_edges';
+  const nodesCollectionName = ARANGO_COLLECTION_NAMES.NODES; // Use constant
+  const edgesCollectionName = ARANGO_COLLECTION_NAMES.EDGES; // Use constant
 
   try {
     // 1. Check if database exists and create if not

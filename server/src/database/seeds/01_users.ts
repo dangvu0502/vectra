@@ -1,13 +1,13 @@
 import type { Knex } from 'knex';
-import { TEST_USER_ID } from '../constants';
+import { TEST_USER_ID, PG_TABLE_NAMES } from '../constants';
 
 // Constant test user ID that we can reference in other parts of the application
 export async function seed(knex: Knex): Promise<void> {
   // First, delete existing entries
-  await knex('users').del();
+  await knex(PG_TABLE_NAMES.USERS).del();
 
   // Then insert the seed data
-  await knex('users').insert([
+  await knex(PG_TABLE_NAMES.USERS).insert([
     {
       id: TEST_USER_ID,
       provider: 'test',
@@ -19,4 +19,4 @@ export async function seed(knex: Knex): Promise<void> {
       updated_at: new Date()
     }
   ]);
-} 
+}

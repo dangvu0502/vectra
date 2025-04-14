@@ -1,5 +1,5 @@
 import { db } from '@/database/connection';
-// Removed incorrect import: import { USERS_TABLE } from '@/database/constants';
+import { PG_TABLE_NAMES } from '@/database/constants'; // Correct import
 import { v4 as uuidv4 } from 'uuid';
 import type { UserProfile } from './auth.types';
 
@@ -13,7 +13,7 @@ export const findUserByProviderQuery = async (
   provider: string,
   providerId: string
 ): Promise<UserProfile | undefined> => {
-  return db('users') // Use hardcoded table name
+  return db(PG_TABLE_NAMES.USERS)
     .where({ provider: provider, provider_id: providerId })
     .first();
 };
@@ -30,7 +30,7 @@ export const createUserQuery = async (userData: {
   display_name?: string;
   profile_picture_url?: string | null;
 }): Promise<UserProfile> => {
-  const [newUser] = await db('users') // Use hardcoded table name
+  const [newUser] = await db(PG_TABLE_NAMES.USERS)
     .insert({
       id: uuidv4(),
       ...userData,
@@ -45,5 +45,5 @@ export const createUserQuery = async (userData: {
  * @returns The user profile if found, otherwise undefined.
  */
 export const findUserByIdQuery = async (id: string): Promise<UserProfile | undefined> => {
-  return db('users').where({ id }).first(); // Use hardcoded table name
+  return db(PG_TABLE_NAMES.USERS).where({ id }).first();
 };

@@ -1,7 +1,7 @@
 import type { Knex } from 'knex';
 import type { File as DbFileType } from './file.schema'; // Import File type
-// Import necessary table names
-import { COLLECTIONS_TABLE, COLLECTION_FILES_TABLE, FILES_TABLE, TEXT_EMBEDDINGS_TABLE } from '@/config/constants';
+import { PG_TABLE_NAMES } from '@/database/constants'; // Import PG constants
+// Removed incorrect import: import { COLLECTIONS_TABLE, COLLECTION_FILES_TABLE, FILES_TABLE, TEXT_EMBEDDINGS_TABLE } from '@/config/constants';
 // Import the extracted search functions
 import { findSimilarEmbeddings, findKeywordMatches } from './embedding.search.queries';
 
@@ -43,7 +43,7 @@ const _insertTextEmbeddingsQuery = async (
 
     // Use the provided db or trx instance
     return dbOrTrx.raw(`
-      INSERT INTO ${TEXT_EMBEDDINGS_TABLE}
+      INSERT INTO ${PG_TABLE_NAMES.TEXT_EMBEDDINGS}
       (vector_id, user_id, file_id, embedding, metadata, chunk_text, created_at, updated_at)
       VALUES (?, ?, ?, ?::vector, ?, ?, NOW(), NOW())
     `, [
@@ -74,7 +74,7 @@ const _findCollectionByIdQuery = async ( // Make internal
   dbOrTrx: Knex | Knex.Transaction, // Accept db or trx
   collectionId: string
 ): Promise<{ id: string; name: string; description?: string } | undefined> => {
-  return dbOrTrx(COLLECTIONS_TABLE) // Use dbOrTrx
+  return dbOrTrx(PG_TABLE_NAMES.COLLECTIONS) // Use dbOrTrx
     .where('id', collectionId)
     .first();
 };
@@ -90,7 +90,7 @@ const _deleteTextEmbeddingsByFileIdQuery = async ( // Make internal
   dbOrTrx: Knex | Knex.Transaction, // Accept db or trx
   fileId: string
 ): Promise<void> => {
-  await dbOrTrx(TEXT_EMBEDDINGS_TABLE) // Use dbOrTrx
+  await dbOrTrx(PG_TABLE_NAMES.TEXT_EMBEDDINGS) // Use dbOrTrx
     .where('file_id', fileId)
     .delete();
 };
@@ -108,7 +108,7 @@ const _findFileForDeleteCheckQuery = async ( // Make internal
   dbOrTrx: Knex | Knex.Transaction, // Accept db or trx
   fileId: string
 ): Promise<{ id: string } | undefined> => { // Removed collection_id from return type
-  return dbOrTrx(FILES_TABLE) // Use dbOrTrx
+  return dbOrTrx(PG_TABLE_NAMES.FILES) // Use dbOrTrx
     .select('id') // Removed collection_id from select
     .where('id', fileId)
     .first();

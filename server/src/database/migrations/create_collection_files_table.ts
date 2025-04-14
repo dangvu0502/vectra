@@ -1,28 +1,29 @@
 import type { Knex } from 'knex';
+import { PG_TABLE_NAMES } from '../constants';
 
-const TABLE_NAME = 'collection_files';
+// const TABLE_NAME = 'collection_files'; // Removed, use constant
 
 export async function up(knex: Knex): Promise<void> {
   // Check if dependent tables exist
-  const hasFiles = await knex.schema.hasTable('files');
-  const hasCollections = await knex.schema.hasTable('collections');
+  const hasFiles = await knex.schema.hasTable(PG_TABLE_NAMES.FILES);
+  const hasCollections = await knex.schema.hasTable(PG_TABLE_NAMES.COLLECTIONS);
 
   if (!hasFiles || !hasCollections) {
-    throw new Error('Both "files" and "collections" tables must exist before creating "collection_files".');
+    throw new Error(`Both "${PG_TABLE_NAMES.FILES}" and "${PG_TABLE_NAMES.COLLECTIONS}" tables must exist before creating "${PG_TABLE_NAMES.COLLECTION_FILES}".`);
   }
 
   // Create the join table
-  await knex.schema.createTable(TABLE_NAME, (table) => {
+  await knex.schema.createTable(PG_TABLE_NAMES.COLLECTION_FILES, (table) => {
     table.uuid('collection_id')
       .notNullable()
       .references('id')
-      .inTable('collections')
+      .inTable(PG_TABLE_NAMES.COLLECTIONS)
       .onDelete('CASCADE'); // If a collection is deleted, remove its file links
 
     table.uuid('file_id')
       .notNullable()
       .references('id')
-      .inTable('files')
+      .inTable(PG_TABLE_NAMES.FILES)
       .onDelete('CASCADE'); // If a file is deleted, remove its collection links
 
     // Composite primary key to ensure uniqueness of pairs
@@ -34,11 +35,11 @@ export async function up(knex: Knex): Promise<void> {
 
     table.timestamps(true, true); // Add created_at and updated_at
 
-    console.log(`Created join table ${TABLE_NAME}`);
+    console.log(`Created join table ${PG_TABLE_NAMES.COLLECTION_FILES}`);
   });
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await knex.schema.dropTableIfExists(TABLE_NAME);
-  console.log(`Dropped join table ${TABLE_NAME}`);
+  await knex.schema.dropTableIfExists(PG_TABLE_NAMES.COLLECTION_FILES);
+  console.log(`Dropped join table ${PG_TABLE_NAMES.COLLECTION_FILES}`);
 }

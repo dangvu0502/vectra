@@ -1,10 +1,10 @@
 // Centralized constants for the server application
 
-// Database Table Names
-export const FILES_TABLE = 'files';
-export const TEXT_EMBEDDINGS_TABLE = 'text_embeddings';
-export const COLLECTIONS_TABLE = 'collections';
-export const COLLECTION_FILES_TABLE = 'collection_files'; // Added constant for join table
+// ArangoDB Collection Names
+export const ARANGO_COLLECTION_NAMES = {
+  NODES: 'vb_nodes',
+  EDGES: 'vb_edges',
+} as const;
 
 // API Configuration
 export const API_VERSION = 'v1';
