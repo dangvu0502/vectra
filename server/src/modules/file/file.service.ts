@@ -84,7 +84,8 @@ class FileService implements IFileService {
         id: fileId,
         filename: file.originalname,
         path: newPath,
-        content: content,
+        // Sanitize content to remove null bytes before saving
+        content: content.replace(/\0/g, ''),
         // collection_id: null, // REMOVED - No longer a direct column
         user_id: userId,
         metadata: {
