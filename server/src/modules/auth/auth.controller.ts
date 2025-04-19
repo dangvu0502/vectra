@@ -44,3 +44,24 @@ export const googleCallbackFailure = (req: Request, res: Response) => {
   // Redirect to a frontend failure page or back to the login page
   res.redirect("http://localhost:5173/login/failure"); // Adjust this URL to your frontend app
 };
+
+/**
+ * Handles user logout by destroying the session and clearing cookies.
+ * Sends a success message upon successful logout.
+ */
+export const logout = (req: Request, res: Response, next: Function) => {
+  req.logout((err) => {
+    if (err) {
+      return next(err);
+    }
+    // Clear session cookie and perform cleanup
+    req.session.destroy((destroyErr) => {
+      if (destroyErr) {
+        console.error('Session destruction error:', destroyErr);
+        // Still send success response as the user is effectively logged out
+      }
+      res.clearCookie('connect.sid'); // Default session cookie name
+      res.status(200).json({ message: 'Successfully logged out' });
+    });
+  });
+};

@@ -20,15 +20,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false); 
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      // Call the server logout endpoint
+      await apiClient('/api/auth/logout', {
+        method: 'POST',
+      });
+      
+      // Clear local state
       setUser(null);
-      // Clear token/session info
       localStorage.removeItem('user');
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
       setIsLoading(false);
-    }, 300);
+    }
   }, []);
 
   // Check for existing session on initial load (localStorage or API)
