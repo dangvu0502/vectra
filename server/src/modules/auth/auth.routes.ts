@@ -3,7 +3,7 @@ import { passport } from './passport.config'; // Import configured passport
 import {
   getProfile,
   googleCallbackSuccess,
-  googleCallbackFailure,
+  logout,
 } from './auth.controller'; // Import controllers
 
 const router = express.Router();
@@ -41,23 +41,6 @@ router.get(
 );
 
 router.get('/me', getProfile);
-// --- Logout Route (Optional but Recommended) ---
-router.post('/logout', (req, res, next) => {
-  req.logout((err) => {
-    if (err) {
-      return next(err);
-    }
-    // Optional: Clear session cookie or perform other cleanup
-    req.session.destroy((destroyErr) => {
-      if (destroyErr) {
-        console.error('Session destruction error:', destroyErr);
-        // Decide how to handle this - maybe still send success?
-      }
-      res.clearCookie('connect.sid'); // Default session cookie name, adjust if different
-      res.status(200).json({ message: 'Successfully logged out' });
-    });
-  });
-});
-
+router.post('/logout', logout);
 
 export const authRoutes = router;
