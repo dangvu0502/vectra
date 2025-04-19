@@ -1,32 +1,25 @@
-import express from 'express';
-import { passport } from './passport.config'; // Import configured passport
-import {
-  getProfile,
-  googleCallbackSuccess,
-  logout,
-} from './auth.controller'; // Import controllers
+import express from "express";
+import { passport } from "./passport.config";
+import { ensureAuthenticated } from "./auth.middleware";
+import { getProfile, googleCallbackSuccess, logout } from "./auth.controller";
 
 const router = express.Router();
 
-// --- Google Authentication Routes ---
-
 // 1. Initiate Google OAuth flow
 router.get(
-  '/google',
-  passport.authenticate('google', {
-    scope: ['profile', 'email'], // Request access to profile and email
-    prompt: 'select_account', // Optional: Always prompt user to select account
+  "/google",
+  passport.authenticate("google", {
+    scope: ["profile", "email"],
+    prompt: "select_account",
   })
 );
 
 // 2. Google OAuth Callback
 //    Handles both success and failure scenarios based on passport configuration
 router.get(
-  '/google/callback',
-  passport.authenticate('google', {
-    // failureRedirect: '/login/failure', // Redirect handled by controller now
-    // successRedirect: '/login/success', // Redirect handled by controller now
-    failureMessage: true, // Optional: Store failure message in session flash
+  "/google/callback",
+  passport.authenticate("google", {
+    failureMessage: true,
   }),
   (req, res) => {
     // This middleware runs only on successful authentication
@@ -40,7 +33,7 @@ router.get(
   // A dedicated failure route could also be added if needed.
 );
 
-router.get('/me', getProfile);
-router.post('/logout', logout);
+router.get("/me", ensureAuthenticated, getProfile);
+router.post("/logout", logout);
 
 export const authRoutes = router;

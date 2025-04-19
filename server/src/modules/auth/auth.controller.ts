@@ -6,20 +6,14 @@ import type { UserProfile } from "./auth.types";
  * Sends the user's display name if authenticated, otherwise sends 401 Unauthorized.
  */
 export const getProfile = (req: Request, res: Response) => {
-  if (!req.isAuthenticated()) {
-    // User is not authenticated
-    res.status(401).json({ message: "Unauthorized" });
-  } else {
-    // User is authenticated, req.user should be populated by passport.deserializeUser
-    const user = req.user as UserProfile;
-    // Respond with relevant user info (avoid sending sensitive data)
-    res.json({
-      id: user.id,
-      displayName: user.display_name,
-      email: user.email,
-      profilePictureUrl: user.profile_picture_url,
-    });
-  }
+  const user = req.user as UserProfile;
+  // Respond with relevant user info (avoid sending sensitive data)
+  res.json({
+    id: user.id,
+    displayName: user.display_name,
+    email: user.email,
+    profilePictureUrl: user.profile_picture_url,
+  });
 };
 
 /**
@@ -57,11 +51,11 @@ export const logout = (req: Request, res: Response, next: Function) => {
     // Clear session cookie and perform cleanup
     req.session.destroy((destroyErr) => {
       if (destroyErr) {
-        console.error('Session destruction error:', destroyErr);
+        console.error("Session destruction error:", destroyErr);
         // Still send success response as the user is effectively logged out
       }
-      res.clearCookie('connect.sid'); // Default session cookie name
-      res.status(200).json({ message: 'Successfully logged out' });
+      res.clearCookie("connect.sid"); // Default session cookie name
+      res.status(200).json({ message: "Successfully logged out" });
     });
   });
 };
