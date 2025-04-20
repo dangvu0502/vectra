@@ -127,8 +127,9 @@ class FileController {
   // GET /files - Query files with pagination/search
   async query(req: Request, res: Response, next: NextFunction) {
     try {
+      const user = req.user as UserProfile;
       const validatedQuery = querySchema.parse(req.query);
-      const result = await this.fileService.query(validatedQuery);
+      const result = await this.fileService.query(user.id, validatedQuery);
       res.json({
         status: 'success',
         data: { files: result.files, total: result.total }

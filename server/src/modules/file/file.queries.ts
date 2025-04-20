@@ -75,6 +75,7 @@ export const updateFileEmbeddingErrorQuery = async (
  * @returns An object containing the list of files and the total count.
  */
 export const queryFilesQuery = async (
+  userId: string,
   options: QueryOptions = {}
 ): Promise<{ files: DbFileType[]; total: number }> => {
   const {
@@ -104,6 +105,7 @@ export const queryFilesQuery = async (
 
   // Get paginated results
   const dbFiles = await queryBuilder
+    .where('user_id', userId)
     .orderBy(sortBy, sortOrder)
     .offset(skip)
     .limit(limitNum)

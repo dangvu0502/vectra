@@ -29,7 +29,7 @@ export interface IFileService {
     collectionId?: string; // Keep optional collectionId for linking
     userId: string;
   }): Promise<DbFileType>;
-  query(options?: QueryOptions): Promise<{ files: DbFileType[]; total: number }>;
+  query(userId: string, options?: QueryOptions): Promise<{ files: DbFileType[]; total: number }>;
   findById(id: string): Promise<DbFileType | null>;
   delete(id: string): Promise<void>;
   // Removed ingestUrl method signature
@@ -141,7 +141,7 @@ class FileService implements IFileService {
     }
   }
 
-  async query(options: QueryOptions = {}): Promise<{ files: DbFileType[]; total: number }> {
+  async query(userId: string, options: QueryOptions = {}): Promise<{ files: DbFileType[]; total: number }> {
     const {
       q,
       page = '1',
@@ -152,7 +152,7 @@ class FileService implements IFileService {
 
     try {
       // Pass parsed options, query function handles defaults if needed
-      return await queryFilesQuery({ q, page, limit, sortBy, sortOrder });
+      return await queryFilesQuery(userId, {q, page, limit, sortBy, sortOrder });
     } catch (error) {
       console.error("Error in query:", error);
       throw error;
