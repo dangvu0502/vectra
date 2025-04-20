@@ -1,5 +1,6 @@
 import { FC, useState } from 'react';
 import { AppLayout } from '@/components/ui/app-layout';
+import { useAuth } from '@/hooks/use-auth'; // Import useAuth
 import { FileList } from '@/components/features/storage/file-list';
 import { StorageHeader } from '@/components/features/storage/storage-header';
 import { FileDetailsPanel } from '@/components/features/storage/file-details-panel';
@@ -10,6 +11,7 @@ import { useCollectionsQuery } from '@/hooks/use-collections-query'; // Import t
 import type { Collection } from '@/api/types'; // Import Collection type if not already imported elsewhere
 
 export const StoragePage: FC = () => {
+  const { user, isLoading: isAuthLoading } = useAuth(); // Get auth state
   const [activeTab, setActiveTab] = useState<'files' | 'collections'>('files'); // Renamed tab state value
   const [selectedFile, setSelectedFile] = useState<string | null | undefined>(null);
   const [selectedCollection, setSelectedCollection] = useState<string | null>(null); // Renamed state variable
@@ -135,9 +137,17 @@ export const StoragePage: FC = () => {
     ? collections.find(c => c.id === selectedCollection)
     : undefined;
 
-  return (
-    <AppLayout>
-      <div className="space-y-6 p-4 md:p-6 max-w-[1600px] mx-auto">
+  const renderContent = () => {
+    if (isAuthLoading) {
+      return (
+        <div className="flex items-center justify-center h-full min-h-[400px]">
+          <span className="text-muted-foreground">Loading user data...</span>
+        </div>
+      );
+    }
+
+    return (
+      <>
         <StorageHeader
           activeTab={activeTab}
           onTabChange={(tab) => {
@@ -148,18 +158,23 @@ export const StoragePage: FC = () => {
           }}
           onUpload={handleUpload}
           isUploading={uploadMutation.isPending}
-          onCreateCollection={async () => { // Renamed prop
+          onCreateCollection={async () => {
             setIsCreatingMode(true);
-            setSelectedCollection(null); // Use renamed state setter
+            setSelectedCollection(null);
             return Promise.resolve();
           }}
-          isCreatingCollection={isCreatingCollection} // Pass loading state from hook
+          isCreatingCollection={isCreatingCollection}
+          isLoggedIn={!!user}
         />
 
         <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
           <div className="flex-1 transition-all duration-200 ease-in-out border rounded-lg shadow-sm bg-card overflow-hidden">
-            {activeTab === 'files' ? (
-              isLoadingFiles ? ( // Use file loading state
+            {!user ? (
+              <div className="flex items-center justify-center h-full min-h-[300px]">
+                <span className="text-muted-foreground">Please log in to view your storage.</span>
+              </div>
+            ) : activeTab === 'files' ? (
+              isLoadingFiles ? (
                 <div className="flex items-center justify-center h-full min-h-[300px]">
                   <span className="text-muted-foreground">Loading Files...</span>
                 </div>
@@ -176,18 +191,17 @@ export const StoragePage: FC = () => {
                 />
               )
             ) : (
-              // Use CollectionList with data from the hook
               isLoadingCollections ? (
-                 <div className="flex items-center justify-center h-full min-h-[300px]">
+                <div className="flex items-center justify-center h-full min-h-[300px]">
                   <span className="text-muted-foreground">Loading Collections...</span>
                 </div>
               ) : collections.length === 0 ? (
-                 <div className="flex items-center justify-center h-full min-h-[300px]">
+                <div className="flex items-center justify-center h-full min-h-[300px]">
                   <span className="text-muted-foreground">No collections found. Create one!</span>
                 </div>
               ) : (
                 <CollectionList
-                  collections={collections} // Pass fetched collections
+                  collections={collections}
                   selectedCollection={selectedCollection}
                   onCollectionSelect={(collection) => setSelectedCollection(collection.id)}
                   className="min-h-[300px]"
@@ -196,7 +210,7 @@ export const StoragePage: FC = () => {
             )}
           </div>
 
-          {activeTab === 'files' ? (
+          {user && (activeTab === 'files' ? (
             selectedFile ? (
               <FileDetailsPanel
                 file={fileDetails[selectedFile] || null}
@@ -205,17 +219,24 @@ export const StoragePage: FC = () => {
               />
             ) : null
           ) : (
-            // Use CollectionDetailsPanel with data based on selection
             <CollectionDetailsPanel
-              collection={selectedCollectionDetails} // Pass the found details or undefined
-              onDelete={handleDeleteCollection} // Pass the delete handler
-              isDeleting={isDeletingCollection} // Pass deletion loading state
+              collection={selectedCollectionDetails}
+              onDelete={handleDeleteCollection}
+              isDeleting={isDeletingCollection}
               isCreating={isCreatingMode}
               onCreate={handleCreateCollection}
-              isCreatingCollection={isCreatingCollection} // Pass creation loading state
+              isCreatingCollection={isCreatingCollection}
             />
-          )}
+          ))}
         </div>
+      </>
+    );
+  };
+
+  return (
+    <AppLayout>
+      <div className="space-y-6 p-4 md:p-6 max-w-[1600px] mx-auto">
+        {renderContent()}
       </div>
     </AppLayout>
   );
