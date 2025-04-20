@@ -1,9 +1,10 @@
-import { db } from '../connection'; // Adjusted path: from ../database/connection
-import { users_schema } from '../schemas/users_schema'; // Adjusted path: from ../database/schemas/...
-import { collections_schema } from '../schemas/collections_schema'; // Adjusted path
-import { files_schema } from '../schemas/files_schema'; // Adjusted path
-import { collection_files_schema } from '../schemas/collection_files_schema'; // Adjusted path
-import { text_embeddings_schema } from '../schemas/text_embeddings_schema'; // Adjusted path
+import { db } from '../connection'; 
+import { users_schema } from '../schemas/users_schema'; 
+import { collections_schema } from '../schemas/collections_schema'; 
+import { files_schema } from '../schemas/files_schema'; 
+import { collection_files_schema } from '../schemas/collection_files_schema'; 
+import { text_embeddings_schema } from '../schemas/text_embeddings_schema'; 
+import { api_keys_schema } from '../schemas/api_keys_schema'; 
 import type { Knex } from 'knex';
 
 async function orchestrateDatabase(db: Knex): Promise<void> {
@@ -40,6 +41,13 @@ async function orchestrateDatabase(db: Knex): Promise<void> {
       await collection_files_schema.up(db);
     } else {
       console.log('Skipping collection_files schema (table already exists).');
+    }
+
+    if (!(await db.schema.hasTable('api_keys'))) {
+      console.log('Applying api_keys schema...');
+      await api_keys_schema.up(db);
+    } else {
+      console.log('Skipping api_keys schema (table already exists).');
     }
     
     // text_embeddings schema likely checks for dependent tables internally, 
