@@ -143,7 +143,8 @@ class FileController {
   async findById(req: Request, res: Response, next: NextFunction) {
     try {
       const { id } = IdParamSchema.parse(req.params); // Validate ID format
-      const file = await this.fileService.findById(id);
+      const user = req.user as UserProfile;
+      const file = await this.fileService.findById(user.id, id);
       if (!file) {
         throw new FileNotFoundError(id); // Throw specific error
       }
@@ -157,8 +158,8 @@ class FileController {
   async delete(req: Request, res: Response, next: NextFunction) {
     try {
       const { id } = IdParamSchema.parse(req.params); // Validate ID format
-      // TODO: Add user ownership check here before deleting
-      await this.fileService.delete(id);
+      const user = req.user as UserProfile;
+      await this.fileService.delete(user.id, id);
       res.status(204).send(); // No content on success
     } catch (error) {
       next(error); // Pass errors to the central error handler

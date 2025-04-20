@@ -122,7 +122,7 @@ export const collectionsService = {
     }
 
     // 2. Verify the user owns the file to be added
-    const file = await findFileByIdQuery(fileId); // Use query from file module
+    const file = await findFileByIdQuery(userId, fileId); // Use query from file module
     if (!file) {
       throw new FileNotFoundError(fileId);
     }

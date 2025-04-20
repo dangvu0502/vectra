@@ -30,8 +30,8 @@ export interface IFileService {
     userId: string;
   }): Promise<DbFileType>;
   query(userId: string, options?: QueryOptions): Promise<{ files: DbFileType[]; total: number }>;
-  findById(id: string): Promise<DbFileType | null>;
-  delete(id: string): Promise<void>;
+  findById(userId: string, id: string): Promise<DbFileType | null>;
+  delete(userId: string, id: string): Promise<void>;
   // Removed ingestUrl method signature
   // Methods related to direct file-collection links (add/remove/getFilesIn) are removed
   getCollectionsForFile(fileId: string, userId: string): Promise<Collection[]>; // Use Collection type
@@ -159,17 +159,17 @@ class FileService implements IFileService {
     }
   }
 
-  async findById(id: string): Promise<DbFileType | null> {
+  async findById(userId: string, id: string): Promise<DbFileType | null> {
     try {
-      return await findFileByIdQuery(id);
+      return await findFileByIdQuery(userId, id);
     } catch (error) {
       console.error("Error in findById:", error);
       throw error;
     }
   }
 
-  async delete(id: string): Promise<void> {
-    const fileToDelete = await findFileByIdQuery(id);
+  async delete(userId: string, id: string): Promise<void> {
+    const fileToDelete = await findFileByIdQuery(userId, id);
     if (!fileToDelete) {
       console.warn(`File with id "${id}" not found for deletion.`);
       throw new FileNotFoundError(id);
@@ -180,7 +180,7 @@ class FileService implements IFileService {
     // We don't need to manually delete from the join table.
 
     try {
-      const deletedRows = await deleteFileByIdQuery(id);
+      const deletedRows = await deleteFileByIdQuery(userId, id);
 
       if (deletedRows === 0) {
         console.warn(`File with id "${id}" was found but delete operation affected 0 rows.`);
@@ -211,7 +211,7 @@ class FileService implements IFileService {
   // Updated method to use Collection type and query from collections module
   async getCollectionsForFile(fileId: string, userId: string): Promise<Collection[]> {
      // 1. Verify the user owns the file (still good practice)
-     const file = await findFileByIdQuery(fileId);
+     const file = await findFileByIdQuery(userId, fileId);
     if (!file) {
       throw new FileNotFoundError(fileId);
     }

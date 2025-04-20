@@ -1,9 +1,9 @@
-import { db } from '@/database/connection';
+import { db } from "@/database/connection";
 // Removed duplicate: import { db } from '@/database/connection';
-import { PG_TABLE_NAMES } from '@/database/constants'; // Import PG constants
-import type { Knex } from 'knex';
-import type { File as DbFileType, QueryOptions } from './file.schema'; // Keep using types from model
-import { fileSchema, querySchema } from './file.schema'; // Import necessary schemas
+import { PG_TABLE_NAMES } from "@/database/constants"; // Import PG constants
+import type { Knex } from "knex";
+import type { File as DbFileType, QueryOptions } from "./file.schema"; // Keep using types from model
+import { fileSchema, querySchema } from "./file.schema"; // Import necessary schemas
 // Removed unused import: import { FILES_TABLE } from '@/config/constants';
 
 /**
@@ -13,17 +13,22 @@ import { fileSchema, querySchema } from './file.schema'; // Import necessary sch
  * @returns The newly created file record.
  */
 export const insertFileQuery = async (
-  fileData: Omit<DbFileType, 'created_at' | 'updated_at'> & { created_at?: Date, updated_at?: Date }, // Adjust type slightly for insertion flexibility
+  fileData: Omit<DbFileType, "created_at" | "updated_at"> & {
+    created_at?: Date;
+    updated_at?: Date;
+  }, // Adjust type slightly for insertion flexibility
   trx?: Knex.Transaction
 ): Promise<DbFileType> => {
-  const queryBuilder = trx ? trx(PG_TABLE_NAMES.FILES) : db(PG_TABLE_NAMES.FILES);
+  const queryBuilder = trx
+    ? trx(PG_TABLE_NAMES.FILES)
+    : db(PG_TABLE_NAMES.FILES);
   const [insertedRecord] = await queryBuilder
     .insert({
       ...fileData,
       created_at: fileData.created_at || new Date(), // Ensure dates are set
       updated_at: fileData.updated_at || new Date(),
     })
-    .returning('*');
+    .returning("*");
   return fileSchema.parse(insertedRecord); // Validate on return
 };
 
@@ -39,13 +44,16 @@ export const updateFileEmbeddingSuccessQuery = async (
   timestamp: string,
   trx?: Knex.Transaction
 ): Promise<number> => {
-  const queryBuilder = trx ? trx(PG_TABLE_NAMES.FILES) : db(PG_TABLE_NAMES.FILES);
-  return queryBuilder
-    .where({ id: fileId })
-    .update({
-      metadata: db.raw('jsonb_set(jsonb_set(metadata, \'{embeddingsCreated}\', \'true\'), \'{embeddingsTimestamp}\', ?::jsonb)', [JSON.stringify(timestamp)]),
-      updated_at: new Date()
-    });
+  const queryBuilder = trx
+    ? trx(PG_TABLE_NAMES.FILES)
+    : db(PG_TABLE_NAMES.FILES);
+  return queryBuilder.where({ id: fileId }).update({
+    metadata: db.raw(
+      "jsonb_set(jsonb_set(metadata, '{embeddingsCreated}', 'true'), '{embeddingsTimestamp}', ?::jsonb)",
+      [JSON.stringify(timestamp)]
+    ),
+    updated_at: new Date(),
+  });
 };
 
 /**
@@ -60,13 +68,15 @@ export const updateFileEmbeddingErrorQuery = async (
   errorMsg: string,
   trx?: Knex.Transaction
 ): Promise<number> => {
-  const queryBuilder = trx ? trx(PG_TABLE_NAMES.FILES) : db(PG_TABLE_NAMES.FILES);
-  return queryBuilder
-    .where({ id: fileId })
-    .update({
-      metadata: db.raw('jsonb_set(metadata, \'{embeddingError}\', ?::jsonb)', [JSON.stringify(errorMsg)]),
-      updated_at: new Date()
-    });
+  const queryBuilder = trx
+    ? trx(PG_TABLE_NAMES.FILES)
+    : db(PG_TABLE_NAMES.FILES);
+  return queryBuilder.where({ id: fileId }).update({
+    metadata: db.raw("jsonb_set(metadata, '{embeddingError}', ?::jsonb)", [
+      JSON.stringify(errorMsg),
+    ]),
+    updated_at: new Date(),
+  });
 };
 
 /**
@@ -80,10 +90,10 @@ export const queryFilesQuery = async (
 ): Promise<{ files: DbFileType[]; total: number }> => {
   const {
     q,
-    page = '1',
-    limit = '10',
-    sortBy = 'created_at',
-    sortOrder = 'desc'
+    page = "1",
+    limit = "10",
+    sortBy = "created_at",
+    sortOrder = "desc",
   } = querySchema.parse(options);
 
   const pageNum = parseInt(page, 10);
@@ -95,27 +105,31 @@ export const queryFilesQuery = async (
 
   if (q) {
     const searchTerm = `%${q}%`;
-    queryBuilder = queryBuilder.where('filename', 'ilike', searchTerm);
-    countQueryBuilder = countQueryBuilder.where('filename', 'ilike', searchTerm);
+    queryBuilder = queryBuilder.where("filename", "ilike", searchTerm);
+    countQueryBuilder = countQueryBuilder.where(
+      "filename",
+      "ilike",
+      searchTerm
+    );
   }
 
   // Get total count
-  const countResult = await countQueryBuilder.count('* as count').first();
+  const countResult = await countQueryBuilder.count("* as count").first();
   const total = countResult ? parseInt(countResult.count as string, 10) : 0;
 
   // Get paginated results
   const dbFiles = await queryBuilder
-    .where('user_id', userId)
+    .where("user_id", userId)
     .orderBy(sortBy, sortOrder)
     .offset(skip)
     .limit(limitNum)
-    .select('*');
+    .select("*");
 
-  const validatedFiles = dbFiles.map(dbFile => fileSchema.parse(dbFile));
+  const validatedFiles = dbFiles.map((dbFile) => fileSchema.parse(dbFile));
 
   return {
     files: validatedFiles,
-    total
+    total,
   };
 };
 
@@ -126,13 +140,14 @@ export const queryFilesQuery = async (
  * @returns The file record if found, otherwise null.
  */
 export const findFileByIdQuery = async (
+  userId: string,
   id: string,
   trx?: Knex.Transaction
 ): Promise<DbFileType | null> => {
-  const queryBuilder = trx ? trx(PG_TABLE_NAMES.FILES) : db(PG_TABLE_NAMES.FILES);
-  const dbFile = await queryBuilder
-    .where({ id })
-    .first();
+  const queryBuilder = trx
+    ? trx(PG_TABLE_NAMES.FILES)
+    : db(PG_TABLE_NAMES.FILES);
+  const dbFile = await queryBuilder.where({ id, user_id: userId }).first();
   return dbFile ? fileSchema.parse(dbFile) : null;
 };
 
@@ -143,13 +158,14 @@ export const findFileByIdQuery = async (
  * @returns The number of deleted rows.
  */
 export const deleteFileByIdQuery = async (
+  userId: string,
   id: string,
   trx?: Knex.Transaction
 ): Promise<number> => {
-  const queryBuilder = trx ? trx(PG_TABLE_NAMES.FILES) : db(PG_TABLE_NAMES.FILES);
-  return queryBuilder
-    .where({ id })
-    .delete();
+  const queryBuilder = trx
+    ? trx(PG_TABLE_NAMES.FILES)
+    : db(PG_TABLE_NAMES.FILES);
+  return queryBuilder.where({ id, user_id: userId }).delete();
 };
 
 // --- Collection File Link Queries (Moved to collections.queries.ts as per comment) ---
