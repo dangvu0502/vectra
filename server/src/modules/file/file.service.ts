@@ -10,7 +10,6 @@ import {
   ForbiddenError,
 } from "@/shared/errors";
 import {
-  querySchema,
   type File as DbFileType,
   type QueryOptions,
 } from "./file.schema";
@@ -19,18 +18,11 @@ import {
   type IEmbeddingService,
 } from "./file.embedding.service";
 import type { Collection } from "@/modules/collections/collections.validation";
-import {
-  deleteFileByIdQuery,
-  findFileByIdQuery,
-  insertFileQuery,
-  queryFilesQuery,
-  updateFileEmbeddingErrorQuery,
-  updateFileEmbeddingSuccessQuery,
-} from "./file.queries";
 import { createCollectionModule } from "../collections";
+import { FileQueries } from './file.queries';
+import { CollectionQueries } from '@/modules/collections/collections.queries';
 
 const collectionModule = createCollectionModule(db);
-const collectionsQueries = collectionModule.queries;
 // Interface using DbFileType and QueryOptions from model.ts
 export interface IFileService {
   upload(params: {
@@ -50,31 +42,12 @@ export interface IFileService {
   getCollectionsForFile(fileId: string, userId: string): Promise<Collection[]>; // Use Collection type
 }
 
-class FileService implements IFileService {
-  private static instance: FileService | null = null;
-  private readonly db: Knex;
-  private readonly embeddingService: IEmbeddingService;
-
-  private constructor(db: Knex, embeddingService: IEmbeddingService) {
-    // Removed firecrawlSvc parameter
-    this.db = db;
-    this.embeddingService = embeddingService;
-  }
-
-  static getInstance(
-    db: Knex,
-    embeddingService: IEmbeddingService
-  ): FileService {
-    // Removed firecrawlSvc parameter
-    if (!FileService.instance) {
-      FileService.instance = new FileService(db, embeddingService); // Removed firecrawlSvc argument
-    }
-    return FileService.instance;
-  }
-
-  static resetInstance(): void {
-    FileService.instance = null;
-  }
+export class FileService implements IFileService {
+  constructor(
+    private readonly queries: FileQueries,
+    private readonly embeddingService: IEmbeddingService,
+    private readonly collectionQueries: CollectionQueries
+  ) {}
 
   async upload({
     file,
@@ -122,19 +95,19 @@ class FileService implements IFileService {
       };
 
       // Insert file metadata within the transaction
-      createdDbFile = await insertFileQuery(fileData, transaction);
+      createdDbFile = await this.queries.insertFile(fileData);
 
       // If collectionId is provided, create the link in the join table
       if (collectionId) {
         // Verify user owns the target collection (important for security)
-        const targetCollection = await collectionsQueries.findCollectionById(
+        const targetCollection = await this.collectionQueries.findCollectionById(
           collectionId,
           userId
         );
         if (!targetCollection) {
           throw new CollectionNotFoundError(collectionId); // Or ForbiddenError if preferred
         }
-        await collectionsQueries.addFileLink(
+        await this.collectionQueries.addFileLink(
           collectionId,
           createdDbFile.id,
           transaction
@@ -154,7 +127,7 @@ class FileService implements IFileService {
           console.log(
             `Embedding process initiated successfully for file ${fileId}`
           );
-          return updateFileEmbeddingSuccessQuery(
+          return this.queries.updateFileEmbeddingSuccess(
             fileId,
             new Date().toISOString()
           );
@@ -165,7 +138,7 @@ class FileService implements IFileService {
             embeddingError instanceof Error
               ? embeddingError.message
               : "Unknown embedding error";
-          return updateFileEmbeddingErrorQuery(fileId, errorMsg);
+          return this.queries.updateFileEmbeddingError(fileId, errorMsg);
         });
 
       return createdDbFile;
@@ -192,40 +165,15 @@ class FileService implements IFileService {
     userId: string,
     options: QueryOptions = {}
   ): Promise<{ files: DbFileType[]; total: number }> {
-    const {
-      q,
-      page = "1",
-      limit = "10",
-      sortBy = "created_at",
-      sortOrder = "desc",
-    } = querySchema.parse(options);
-
-    try {
-      // Pass parsed options, query function handles defaults if needed
-      return await queryFilesQuery(userId, {
-        q,
-        page,
-        limit,
-        sortBy,
-        sortOrder,
-      });
-    } catch (error) {
-      console.error("Error in query:", error);
-      throw error;
-    }
+    return await this.queries.queryFiles(userId, options);
   }
 
   async findById(userId: string, id: string): Promise<DbFileType | null> {
-    try {
-      return await findFileByIdQuery(userId, id);
-    } catch (error) {
-      console.error("Error in findById:", error);
-      throw error;
-    }
+    return await this.queries.findFileById(userId, id);
   }
 
   async delete(userId: string, id: string): Promise<void> {
-    const fileToDelete = await findFileByIdQuery(userId, id);
+    const fileToDelete = await this.queries.findFileById(userId, id);
     if (!fileToDelete) {
       console.warn(`File with id "${id}" not found for deletion.`);
       throw new FileNotFoundError(id);
@@ -236,7 +184,7 @@ class FileService implements IFileService {
     // We don't need to manually delete from the join table.
 
     try {
-      const deletedRows = await deleteFileByIdQuery(userId, id);
+      const deletedRows = await this.queries.deleteFileById(userId, id);
 
       if (deletedRows === 0) {
         console.warn(
@@ -277,7 +225,7 @@ class FileService implements IFileService {
     userId: string
   ): Promise<Collection[]> {
     // 1. Verify the user owns the file (still good practice)
-    const file = await findFileByIdQuery(userId, fileId);
+    const file = await this.queries.findFileById(userId, fileId);
     if (!file) {
       throw new FileNotFoundError(fileId);
     }
@@ -288,7 +236,7 @@ class FileService implements IFileService {
 
     // 2. Fetch collections using the query from collections.queries
     // This query implicitly handles user ownership check via joins
-    const collections = await collectionsQueries.findCollectionsByFileId(
+    const collections = await this.collectionQueries.findCollectionsByFileId(
       fileId,
       userId
     );
@@ -300,4 +248,8 @@ class FileService implements IFileService {
 // Keep instance export
 const embeddingService = EmbeddingService.getInstance(db);
 // Removed firecrawlService argument from getInstance call
-export const fileService = FileService.getInstance(db, embeddingService);
+export const fileService = new FileService(
+  new FileQueries(db),
+  embeddingService,
+  new CollectionQueries(db)
+);

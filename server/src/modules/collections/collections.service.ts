@@ -15,7 +15,7 @@ import {
   FileNotFoundError,
   ForbiddenError,
 } from "@/shared/errors";
-import { findFileByIdQuery } from "@/modules/file/file.queries";
+import { fileModule } from "..";
 
 export class CollectionService {
   constructor(private readonly queries: CollectionQueries) {}
@@ -146,12 +146,9 @@ export class CollectionService {
       throw new CollectionNotFoundError(collectionId);
     }
 
-    const file = await findFileByIdQuery(userId, fileId);
+    const file = await fileModule.queries.findFileById(userId, fileId);
     if (!file) {
       throw new FileNotFoundError(fileId);
-    }
-    if (file.user_id !== userId) {
-      throw new ForbiddenError("User does not own the specified file.");
     }
 
     try {
