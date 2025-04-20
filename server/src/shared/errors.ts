@@ -48,6 +48,13 @@ export class CollectionConflictError extends CollectionError {
   }
 }
 
+export class ApiKeyNotFoundError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ApiKeyNotFoundError';
+  }
+}
+
 // General App Errors
 export class AppError extends Error {
   public readonly statusCode: number;

@@ -6,6 +6,10 @@ import type { ApiKeyResponse, CreateApiKeyInput, ToggleApiKeyInput } from './api
 export class ApiKeyService {
   constructor(private readonly queries: ApiKeyQueries) {}
 
+  async findApiKeyByName(userId: string, name: string): Promise<ApiKeyResponse | null> {
+    return this.queries.findApiKeyByName(userId, name);
+  }
+
   async createApiKey(userId: string, input: CreateApiKeyInput): Promise<ApiKeyResponse> {
     const key = `sk-${uuidv4()}-${crypto.randomBytes(16).toString('hex')}`;
     const apiKey = await this.queries.createApiKey(userId, input.name, key);

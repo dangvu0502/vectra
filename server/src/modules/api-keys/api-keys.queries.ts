@@ -16,6 +16,15 @@ export class ApiKeyQueries {
     return apiKey;
   }
 
+  async findApiKeyByName(userId: string, name: string): Promise<ApiKey | null> {
+    const [apiKey] = await this.db('api_keys')
+      .where({ user_id: userId, name })
+      .select('*')
+      .limit(1);
+
+    return apiKey || null;
+  }
+
   async listApiKeys(userId: string): Promise<ApiKey[]> {
     return this.db('api_keys')
       .where('user_id', userId)

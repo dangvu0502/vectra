@@ -2,7 +2,7 @@ import type { Request, Response } from 'express';
 import { ApiKeyService } from './api-keys.service';
 import type { UserProfile } from '../auth/auth.types';
 import { createApiKeySchema, toggleApiKeySchema } from './api-keys.validation';
-
+import { ApiKeyNotFoundError } from '../../shared/errors';
 interface AuthenticatedRequest extends Request {
   user: UserProfile;
 }
@@ -14,6 +14,12 @@ export class ApiKeyController {
     try {
       const input = createApiKeySchema.parse(req.body);
       const userId = req.user.id;
+
+      const isApiKeyNameTaken = await this.apiKeyService.findApiKeyByName(userId, input.name);
+      
+      if (isApiKeyNameTaken) {
+        throw new ApiKeyNotFoundError('An API key with this name already exists');
+      }
 
       const apiKey = await this.apiKeyService.createApiKey(userId, input);
       res.status(201).json(apiKey);
