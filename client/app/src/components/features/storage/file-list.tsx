@@ -31,6 +31,7 @@ interface FileItem {
   size: string;
   date: string;
   type: string;
+  actions: string;
   id?: string;
 }
 
@@ -87,7 +88,7 @@ export const FileList: FC<FileListProps> = ({
     },
     {
       header: 'Actions',
-      key: 'name' as const,
+      key: 'actions' as const,
       className: 'w-[5%] text-right',
       render: (file: FileItem) => (
         <div className="flex justify-end">
