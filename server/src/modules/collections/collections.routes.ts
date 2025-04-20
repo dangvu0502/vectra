@@ -1,36 +1,27 @@
 import { Router } from 'express';
-// Import collections controller
-import { collectionsController } from './collections.controller';
-// Import middleware from its new location
+import { CollectionController } from './collections.controller';
 import { ensureAuthenticated } from '../auth/auth.middleware';
-// Remove fileController import
+import type { RequestHandler } from 'express';
 
-const router = Router();
+export function createCollectionRoutes(controller: CollectionController): Router {
+  const router = Router();
 
-// Apply authentication middleware to all routes
-router.use(ensureAuthenticated);
+  router.use(ensureAuthenticated);
 
-// --- Collection CRUD Routes ---
-// Define routes for collections, applying middleware explicitly
-router.post('/', collectionsController.createCollection);
-router.get('/', collectionsController.getUserCollections);
-router.get('/:collectionId', collectionsController.getCollectionById);
-router.put('/:collectionId', collectionsController.updateCollection);
-router.delete('/:collectionId', collectionsController.deleteCollection);
+  // Collection CRUD routes
+  router.post('/', controller.createCollection.bind(controller) as unknown as RequestHandler);
+  router.get('/', controller.getUserCollections.bind(controller) as unknown as RequestHandler);
+  router.get('/:collectionId', controller.getCollectionById.bind(controller) as unknown as RequestHandler);
+  router.put('/:collectionId', controller.updateCollection.bind(controller) as unknown as RequestHandler);
+  router.delete('/:collectionId', controller.deleteCollection.bind(controller) as unknown as RequestHandler);
 
-// --- File Management within Collection Routes ---
-// GET /api/collections/:collectionId/files - List files in a collection
-router.get('/:collectionId/files', collectionsController.getCollectionFiles); // Use collectionsController
+  // Collection files routes
+  router.get('/:collectionId/files', controller.getCollectionFiles.bind(controller) as unknown as RequestHandler);
+  router.post('/:collectionId/files', controller.addFileToCollection.bind(controller) as unknown as RequestHandler);
+  router.delete('/:collectionId/files/:fileId', controller.removeFileFromCollection.bind(controller) as unknown as RequestHandler);
 
-// POST /api/collections/:collectionId/files - Add a file to a collection
-router.post('/:collectionId/files', collectionsController.addFileToCollection); // Use collectionsController
+  // Collection query route
+  router.post('/:collectionId/query', controller.queryCollection.bind(controller) as unknown as RequestHandler);
 
-// DELETE /api/collections/:collectionId/files/:fileId - Remove a file from a collection
-router.delete('/:collectionId/files/:fileId', collectionsController.removeFileFromCollection); // Use collectionsController
-
-// --- Query Route ---
-// POST /api/collections/:collectionId/query - Query embeddings within a collection
-router.post('/:collectionId/query', collectionsController.queryCollection);
-
-
-export const collectionsRouter = router;
+  return router;
+} 
