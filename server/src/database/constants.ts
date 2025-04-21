@@ -10,4 +10,5 @@ export const PG_TABLE_NAMES = {
   FILES: 'files',
   TEXT_EMBEDDINGS: 'text_embeddings',
   COLLECTION_FILES: 'collection_files', // Join table
+  API_KEYS: 'api_keys',
 } as const; // Use 'as const' for stricter typing

@@ -1,213 +1,192 @@
 import type { Request, Response, NextFunction } from 'express';
-import { collectionsService } from './collections.service';
-import {
-  CreateCollectionSchema,
-  UpdateCollectionSchema,
-  CollectionIdParamSchema,
-  // Import the moved schemas
-  QueryCollectionBodySchema,
-  AddFileToCollectionParamsSchema,
-  AddFileToCollectionBodySchema,
-  RemoveFileFromCollectionParamsSchema,
-  GetFilesInCollectionParamsSchema
-} from './collections.types';
+import { CollectionService } from './collections.service';
 import type { UserProfile } from '@/modules/auth/auth.types';
+import {
+  createCollectionSchema,
+  updateCollectionSchema,
+  collectionIdParamSchema,
+  addFileToCollectionSchema,
+  removeFileFromCollectionSchema,
+} from './collections.validation';
 import {
   CollectionNotFoundError,
   CollectionConflictError,
-  FileNotFoundError, // Import other needed errors
-  ForbiddenError
+  FileNotFoundError,
+  ForbiddenError,
 } from '@/shared/errors';
-import { TEST_USER_ID } from '@/config/constants';
-import { z } from 'zod'; // Import Zod for validation
-import { db } from '@/database/connection'; // Import the database connection instance
-// Import the embedding service instance
+import { z } from 'zod';
 import { EmbeddingService } from '@/modules/file/file.embedding.service';
-const embeddingService = EmbeddingService.getInstance(db); // Use the imported db instance
+import { db } from '@/database/connection';
 
+const embeddingService = EmbeddingService.getInstance(db);
 
-export const collectionsController = {
-  // POST /collections - Create a new collection
-  async createCollection(req: Request, res: Response, next: NextFunction) {
+interface AuthenticatedRequest extends Request {
+  user: UserProfile;
+}
+
+export class CollectionController {
+  constructor(private readonly collectionService: CollectionService) {}
+
+  async createCollection(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
-      const validatedBody = CreateCollectionSchema.parse(req.body);
-      const user = req.user as UserProfile; // Assumes passport adds user to req
+      const input = createCollectionSchema.parse(req.body);
+      const userId = req.user.id;
 
-      const newCollection = await collectionsService.createCollection(
-        user.id,
-        validatedBody
-      );
-      res.status(201).json(newCollection);
+      const collection = await this.collectionService.createCollection(userId, input);
+      res.status(201).json(collection);
     } catch (error) {
       if (error instanceof CollectionConflictError) {
-        // Send response, don't return
-        res.status(409).json({ message: error.message }); 
-        return; // End execution for this handler
+        res.status(409).json({ message: error.message });
+        return;
       }
-      // Handle Zod validation errors or other errors
       next(error);
     }
-  },
+  }
 
-  // GET /collections - Get all collections for the logged-in user
-  async getUserCollections(req: Request, res: Response, next: NextFunction) {
+  async getUserCollections(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
-      const user = req.user as UserProfile;
-      const collections = await collectionsService.getUserCollections(user.id);
+      const userId = req.user.id;
+      const collections = await this.collectionService.getUserCollections(userId);
       res.status(200).json(collections);
     } catch (error) {
       next(error);
     }
-  },
+  }
 
-  // GET /collections/:collectionId - Get a specific collection by ID
-  async getCollectionById(req: Request, res: Response, next: NextFunction) {
+  async getCollectionById(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { collectionId } = CollectionIdParamSchema.parse(req.params);
-      const user = req.user as UserProfile;
+      const { collectionId } = collectionIdParamSchema.parse(req.params);
+      const userId = req.user.id;
 
-      const collection = await collectionsService.getCollectionById(
-        collectionId,
-        user.id
-      );
+      const collection = await this.collectionService.getCollectionById(collectionId, userId);
       res.status(200).json(collection);
     } catch (error) {
       if (error instanceof CollectionNotFoundError) {
-         // Send response, don't return
         res.status(404).json({ message: error.message });
-        return; // End execution for this handler
+        return;
       }
       next(error);
     }
-  },
+  }
 
-  // PUT /collections/:collectionId - Update a specific collection
-  async updateCollection(req: Request, res: Response, next: NextFunction) {
+  async updateCollection(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { collectionId } = CollectionIdParamSchema.parse(req.params);
-      const validatedBody = UpdateCollectionSchema.parse(req.body);
-      const user = req.user as UserProfile;
+      const { collectionId } = collectionIdParamSchema.parse(req.params);
+      const input = updateCollectionSchema.parse(req.body);
+      const userId = req.user.id;
 
-      // Ensure there's something to update
-      if (Object.keys(validatedBody).length === 0) {
-           res.status(400).json({ message: 'No update fields provided.' });
-           return; // End execution for this handler
+      if (Object.keys(input).length === 0) {
+        res.status(400).json({ message: 'No update fields provided.' });
+        return;
       }
 
-      const updatedCollection = await collectionsService.updateCollection(
-        collectionId,
-        user.id,
-        validatedBody
-      );
-      res.status(200).json(updatedCollection);
+      const collection = await this.collectionService.updateCollection(collectionId, userId, input);
+      res.status(200).json(collection);
     } catch (error) {
       if (error instanceof CollectionNotFoundError) {
-         // Send response, don't return
         res.status(404).json({ message: error.message });
-        return; // End execution for this handler
+        return;
       }
       if (error instanceof CollectionConflictError) {
-         // Send response, don't return
         res.status(409).json({ message: error.message });
-        return; // End execution for this handler
+        return;
       }
       next(error);
     }
-  },
+  }
 
-  // DELETE /collections/:collectionId - Delete a specific collection
-  async deleteCollection(req: Request, res: Response, next: NextFunction) {
+  async deleteCollection(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { collectionId } = CollectionIdParamSchema.parse(req.params);
-      const user = req.user as UserProfile;
+      const { collectionId } = collectionIdParamSchema.parse(req.params);
+      const userId = req.user.id;
 
-      await collectionsService.deleteCollection(collectionId, user.id);
-      res.status(204).send(); // No content on successful deletion
+      await this.collectionService.deleteCollection(collectionId, userId);
+      res.status(204).send();
     } catch (error) {
       if (error instanceof CollectionNotFoundError) {
-         // Send response, don't return
         res.status(404).json({ message: error.message });
-        return; // End execution for this handler
+        return;
       }
       next(error);
     }
-  },
+  }
 
-  // --- File Linking Controller Methods ---
-
-  // GET /collections/:collectionId/files
-  async getCollectionFiles(req: Request, res: Response, next: NextFunction) {
+  async getCollectionFiles(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { collectionId } = GetFilesInCollectionParamsSchema.parse(req.params);
-      const user = req.user as UserProfile;
+      const { collectionId } = collectionIdParamSchema.parse(req.params);
+      const userId = req.user.id;
 
-      const files = await collectionsService.getFilesInCollection(user.id, collectionId);
+      const collection = await this.collectionService.getFilesInCollection(userId, collectionId);
       res.status(200).json({
         status: 'success',
-        data: { files, total: files.length }
+        data: { files: collection.files, total: collection.files.length }
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return void res.status(400).json({ message: 'Invalid collection ID', errors: error.errors });
+        res.status(400).json({ message: 'Invalid collection ID', errors: error.errors });
+        return;
       }
       if (error instanceof CollectionNotFoundError) {
-        return void res.status(404).json({ message: error.message });
+        res.status(404).json({ message: error.message });
+        return;
       }
       next(error);
     }
-  },
+  }
 
-  // POST /collections/:collectionId/files
-  async addFileToCollection(req: Request, res: Response, next: NextFunction) {
+  async addFileToCollection(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { collectionId } = AddFileToCollectionParamsSchema.parse(req.params);
-      const { fileId } = AddFileToCollectionBodySchema.parse(req.body);
-      const user = req.user as UserProfile;
+      const { collectionId } = collectionIdParamSchema.parse(req.params);
+      const { fileId } = addFileToCollectionSchema.parse(req.body);
+      const userId = req.user.id;
 
-      await collectionsService.addFileToCollection(user.id, collectionId, fileId);
+      await this.collectionService.addFileToCollection(userId, collectionId, fileId);
       res.status(200).json({ message: 'File added to collection successfully.' });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return void res.status(400).json({ message: 'Invalid request data', errors: error.errors });
+        res.status(400).json({ message: 'Invalid request data', errors: error.errors });
+        return;
       }
       if (error instanceof CollectionNotFoundError || error instanceof FileNotFoundError) {
-        return void res.status(404).json({ message: error.message });
+        res.status(404).json({ message: error.message });
+        return;
       }
       if (error instanceof ForbiddenError) {
-         return void res.status(403).json({ message: error.message });
+        res.status(403).json({ message: error.message });
+        return;
       }
       next(error);
     }
-  },
+  }
 
-  // DELETE /collections/:collectionId/files/:fileId
-  async removeFileFromCollection(req: Request, res: Response, next: NextFunction) {
-     try {
-      const { collectionId, fileId } = RemoveFileFromCollectionParamsSchema.parse(req.params);
-      const user = req.user as UserProfile;
-
-      await collectionsService.removeFileFromCollection(user.id, collectionId, fileId);
-      res.status(200).json({ message: 'File removed from collection successfully.' }); // Send 200 on success
-    } catch (error) {
-       if (error instanceof z.ZodError) {
-        return void res.status(400).json({ message: 'Invalid request parameters', errors: error.errors });
-      }
-      if (error instanceof CollectionNotFoundError) { // Only check CollectionNotFound here
-        return void res.status(404).json({ message: error.message });
-      }
-       // ForbiddenError check might not be strictly necessary if CollectionNotFound covers ownership
-       if (error instanceof ForbiddenError) {
-         return void res.status(403).json({ message: error.message });
-       }
-      next(error);
-    }
-  },
-
-  // POST /collections/:collectionId/query - Query embeddings within a collection
-  async queryCollection(req: Request, res: Response, next: NextFunction) {
+  async removeFileFromCollection(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { collectionId } = CollectionIdParamSchema.parse(req.params);
-      // Parse the full body including optional graph params
+      const { collectionId } = collectionIdParamSchema.parse(req.params);
+      const { fileId } = removeFileFromCollectionSchema.parse(req.body);
+      const userId = req.user.id;
+
+      await this.collectionService.removeFileFromCollection(userId, collectionId, fileId);
+      res.status(200).json({ message: 'File removed from collection successfully.' });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: 'Invalid request parameters', errors: error.errors });
+        return;
+      }
+      if (error instanceof CollectionNotFoundError) {
+        res.status(404).json({ message: error.message });
+        return;
+      }
+      if (error instanceof ForbiddenError) {
+        res.status(403).json({ message: error.message });
+        return;
+      }
+      next(error);
+    }
+  }
+
+  async queryCollection(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { collectionId } = collectionIdParamSchema.parse(req.params);
       const {
         queryText,
         limit,
@@ -215,38 +194,35 @@ export const collectionsController = {
         graphDepth,
         graphTopN,
         graphRelationshipTypes
-      } = QueryCollectionBodySchema.parse(req.body);
-      const user = req.user as UserProfile;
+      } = req.body;
+      const userId = req.user.id;
 
-      // Call the embedding service, passing all parameters
       const results = await embeddingService.queryEmbeddings({
-        userId: user.id,
+        userId,
         queryText,
         limit,
-        collectionId, // Pass the collection ID for filtering
-        // Pass graph parameters
+        collectionId,
         enableGraphSearch,
         graphDepth,
         graphTopN,
         graphRelationshipTypes,
-        // TODO: Consider adding searchMode, maxDistance etc. to the API if needed
       });
 
       res.status(200).json({
         status: 'success',
         data: { results }
       });
-
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return void res.status(400).json({ message: 'Invalid request data', errors: error.errors });
+        res.status(400).json({ message: 'Invalid request data', errors: error.errors });
+        return;
       }
       if (error instanceof CollectionNotFoundError) {
-        return void res.status(404).json({ message: error.message });
+        res.status(404).json({ message: error.message });
+        return;
       }
-      // Handle potential errors from embedding service or query
       console.error("Error during collection query:", error);
-      next(error); // Pass to generic error handler
+      next(error);
     }
-  },
-};
+  }
+}

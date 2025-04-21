@@ -1,4 +1,4 @@
-import { FC, useState } from 'react';
+import { FC } from 'react';
 import { Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tab, Tabs } from '@/components/ui/tabs';
@@ -11,6 +11,7 @@ interface StorageHeaderProps {
   isUploading: boolean;
   onCreateCollection?: () => Promise<void>; // Renamed prop
   isCreatingCollection?: boolean; // Renamed prop
+  isLoggedIn: boolean;
 }
 
 export const StorageHeader: FC<StorageHeaderProps> = ({
@@ -19,9 +20,9 @@ export const StorageHeader: FC<StorageHeaderProps> = ({
   onUpload,
   isUploading,
   onCreateCollection, // Use renamed prop
-  isCreatingCollection // Use renamed prop
+  isCreatingCollection, // Use renamed prop
+  isLoggedIn
 }) => {
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const handleFileSelect = () => {
     const input = document.createElement('input');
     input.type = 'file';
@@ -79,7 +80,7 @@ export const StorageHeader: FC<StorageHeaderProps> = ({
                 size="sm"
                 className="gap-2 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105 group min-w-[100px]"
                 onClick={handleFileSelect}
-                disabled={isUploading}
+                disabled={isUploading || !isLoggedIn}
               >
                 <Upload size={16} className="transition-transform duration-200 group-hover:scale-110 group-hover:rotate-6" />
                 {isUploading ? 'Uploading...' : 'Upload'}
@@ -101,7 +102,7 @@ export const StorageHeader: FC<StorageHeaderProps> = ({
               size="sm"
               className="gap-2 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105 group min-w-[150px]"
               onClick={onCreateCollection} // Use renamed prop
-              disabled={isCreatingCollection} // Use renamed prop
+              disabled={isCreatingCollection || !isLoggedIn} // Use renamed prop
             >
               {isCreatingCollection ? 'Creating...' : 'Create Collection'} {/* Updated button text */}
             </Button>
