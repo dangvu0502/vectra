@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Loader2, Send, Database, FileText, Sparkles } from 'lucide-react';
-import { Tooltip } from '@/components/ui/tooltip';
+import { Loader2, Send } from 'lucide-react';
 import { chat } from '@/api/services/chat';
 
 interface Message {
@@ -27,7 +26,7 @@ export function AppChat({ knowledgeSource }: AppChatProps) {
 
   // Update welcome message when knowledge source changes
   useEffect(() => {
-    let welcomeMessages: Message[] = [
+    const welcomeMessages: Message[] = [
       { text: 'Hi!', sender: 'ai' },
       { text: "I'm an AI assistant trained on documentation, help articles, and other content.", sender: 'ai' },
     ];

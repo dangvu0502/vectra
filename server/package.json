@@ -5,6 +5,9 @@
   "scripts": {
     "test": "vitest",
     "dev": "node --env-file=.env --import @swc-node/register/esm-register --watch ./src/main.ts",
+    "build": "tsc --noEmitOnError false",
+    "build:watch": "tsc --watch --noEmitOnError false",
+    "start": "node --env-file=.env ./dist/main.js",
     "migrate:make": "node --env-file=.env --import @swc-node/register/esm-register ./node_modules/knex/bin/cli.js migrate:make",
     "migrate:latest": "node --env-file=.env --import @swc-node/register/esm-register ./node_modules/knex/bin/cli.js migrate:latest",
     "migrate:rollback": "node --env-file=.env --import @swc-node/register/esm-register ./node_modules/knex/bin/cli.js migrate:rollback",
@@ -46,6 +49,8 @@
   },
   "devDependencies": {
     "@swc-node/register": "^1.10.10",
+    "@types/arangodb": "^3.5.23",
+    "@types/connect-redis": "^0.0.23",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
     "@types/express-session": "^1.18.1",
@@ -57,6 +62,7 @@
     "@types/passport-github2": "^1.2.9",
     "@types/passport-google-oauth20": "^2.0.16",
     "@types/pg": "^8.11.11",
+    "@types/redis": "^4.0.11",
     "@types/supertest": "^6.0.2",
     "@types/uuid": "^10.0.0",
     "supertest": "^7.0.0",

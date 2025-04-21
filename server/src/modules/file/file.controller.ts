@@ -86,8 +86,8 @@ export class FileController {
         return;
       }
 
-      const uploadedFilesInfo = [];
-      const errors = [];
+      const uploadedFilesInfo: DbFileType[] = [];
+      const errors: Array<{ fileName: string; error: string }> = [];
 
       for (const file of files) {
         try {
@@ -130,7 +130,7 @@ export class FileController {
         res.status(207).json({
           status: "partial_success",
           message: "Some files were uploaded successfully, others failed.",
-          data: uploadedFilesInfo.map((file) => ({
+          data: uploadedFilesInfo.map((file: DbFileType) => ({
             ...file,
             embedding: file.metadata?.embeddingsCreated
               ? {
@@ -150,7 +150,7 @@ export class FileController {
         res.status(201).json({
           status: "success",
           message: "All files uploaded successfully.",
-          data: uploadedFilesInfo.map((file) => ({
+          data: uploadedFilesInfo.map((file: DbFileType) => ({
             ...file,
             embedding: file.metadata?.embeddingsCreated
               ? {

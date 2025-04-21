@@ -1,6 +1,5 @@
 import { apiClient } from '@/api/core/client'; // Remove ApiResponse import
 import type { Collection, CreateCollectionInput, UpdateCollectionInput } from '@/api/types/collection'; // Import directly
-import type { VectraFile } from '@/api/types/file'; // Import File type directly
 
 const BASE_PATH = '/api/v1/collections'; // Using the proxy path
 
