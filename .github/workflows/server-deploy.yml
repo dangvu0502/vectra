@@ -6,7 +6,6 @@ on:
     paths:
       - 'server/**'
       - '.github/workflows/server-deploy.yml'
-      - 'docker-compose.prod.yml'
 
 env:
   DOCKER_IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/vectra
@@ -45,8 +44,9 @@ jobs:
           username: ${{ secrets.DROPLET_USERNAME }}
           key: ${{ secrets.DROPLET_SSH_KEY }}
           script: |
-            cd /opt/app/vectra/
+            cd /opt/app/vectra
             git pull origin main
-            docker-compose -f docker-compose.prod.yml down
+            cd server
             docker pull ${{ env.DOCKER_IMAGE_NAME }}:latest
+            docker-compose -f docker-compose.prod.yml down
             docker-compose -f docker-compose.prod.yml up -d
