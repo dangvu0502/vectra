@@ -4,7 +4,7 @@ on:
   push:
     branches: [ main ]
     paths:
-      - 'client/**'
+      - 'client/app/**'
       - '.github/workflows/client-deploy.yml'
 
 jobs:
@@ -15,10 +15,10 @@ jobs:
 
       - name: Build client assets
         run: |
-          cd client
+          cd client/app
           npm install
           npm run build
-          cd ..
+          cd ../..
 
       - name: Deploy client to DigitalOcean
         uses: docker/ssh-action@v1
@@ -35,7 +35,7 @@ jobs:
           rsync -avz --delete \
             --exclude='.git' \
             --exclude='node_modules' \
-            client/dist/ \
+            client/app/dist/ \
             ${{ secrets.DROPLET_USERNAME }}@${{ secrets.DROPLET_HOST }}:/var/www/html/
 
       - name: Restart Nginx
