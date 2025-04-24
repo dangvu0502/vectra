@@ -31,7 +31,7 @@ jobs:
           tags: ${{ env.DOCKER_IMAGE_NAME }}:latest
 
       - name: Deploy server to DigitalOcean
-        uses: docker/ssh-action@v1
+        uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.DROPLET_HOST }}
           username: ${{ secrets.DROPLET_USERNAME }}

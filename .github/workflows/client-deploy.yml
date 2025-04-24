@@ -21,7 +21,7 @@ jobs:
           cd ../..
 
       - name: Deploy client to DigitalOcean
-        uses: docker/ssh-action@v1
+        uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.DROPLET_HOST }}
           username: ${{ secrets.DROPLET_USERNAME }}
@@ -39,7 +39,7 @@ jobs:
             ${{ secrets.DROPLET_USERNAME }}@${{ secrets.DROPLET_HOST }}:/var/www/html/
 
       - name: Restart Nginx
-        uses: docker/ssh-action@v1
+        uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.DROPLET_HOST }}
           username: ${{ secrets.DROPLET_USERNAME }}
