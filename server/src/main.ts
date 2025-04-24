@@ -2,7 +2,8 @@ import express from 'express';
 import morgan from 'morgan';
 import cors from 'cors';
 import session from 'express-session';
-import { RedisStore } from 'connect-redis';
+// @ts-ignore
+import {RedisStore} from "connect-redis"
 import { passport } from './modules/auth';
 import { routes } from './routes';
 import { env } from './config/environment';
@@ -21,6 +22,8 @@ app.use(express.json());
 // Session middleware
 app.use(
   session({
+    name: 'session',
+    // @ts-ignore
     store: new RedisStore({ client: redisConnection }),
     secret: env.SESSION_SECRET,
     resave: false,
