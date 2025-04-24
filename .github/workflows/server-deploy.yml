@@ -6,6 +6,7 @@ on:
     paths:
       - 'server/**'
       - '.github/workflows/server-deploy.yml'
+      - 'docker-compose.prod.yml'
 
 env:
   DOCKER_IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/vectra
