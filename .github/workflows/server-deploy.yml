@@ -16,6 +16,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
       - name: Login to Docker Hub
         uses: docker/login-action@v2
         with:
@@ -29,6 +32,10 @@ jobs:
           file: ./server/Dockerfile.prod
           push: true
           tags: ${{ env.DOCKER_IMAGE_NAME }}:latest
+          cache-from: |
+            type=registry,ref=${{ env.DOCKER_IMAGE_NAME }}:latest
+            type=registry,ref=${{ env.DOCKER_IMAGE_NAME }}:buildcache
+          cache-to: type=registry,ref=${{ env.DOCKER_IMAGE_NAME }}:buildcache,mode=max
 
       - name: Deploy server to DigitalOcean
         uses: appleboy/ssh-action@v1
