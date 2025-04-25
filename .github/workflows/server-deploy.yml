@@ -46,6 +46,7 @@ jobs:
           script: |
             cd /opt/app/vectra
             git pull origin main
+            cd server
             docker pull ${{ env.DOCKER_IMAGE_NAME }}:latest
             docker-compose -f docker-compose.prod.yml down
             docker-compose -f docker-compose.prod.yml up -d
