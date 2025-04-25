@@ -43,6 +43,5 @@ uploads/
 .temp/
 
 # Docker files
-Dockerfile*
 docker-compose*
 .docker/ 
