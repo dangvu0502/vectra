@@ -34,19 +34,32 @@ jobs:
           cd client/app
           npm run build
 
-      # Step 5: Deploy to DigitalOcean
-      - name: Deploy to DigitalOcean
+      # Step 5: Clean web directory on server
+      - name: Clean web directory
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.DROPLET_HOST }}
           username: ${{ secrets.DROPLET_USERNAME }}
           key: ${{ secrets.DROPLET_SSH_KEY }}
           script: |
-            # Clean the Nginx web directory
             rm -rf /var/www/html/*
-            
-            # Copy built files to web directory
-            cp -r client/app/dist/* /var/www/html/
-            
-            # Restart Nginx to serve new files
+
+      # Step 6: Upload built files
+      - name: Upload built files
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DROPLET_HOST }}
+          username: ${{ secrets.DROPLET_USERNAME }}
+          key: ${{ secrets.DROPLET_SSH_KEY }}
+          source: "client/app/dist/*"
+          target: "/var/www/html/"
+
+      # Step 7: Restart Nginx
+      - name: Restart Nginx
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DROPLET_HOST }}
+          username: ${{ secrets.DROPLET_USERNAME }}
+          key: ${{ secrets.DROPLET_SSH_KEY }}
+          script: |
             sudo systemctl restart nginx 
