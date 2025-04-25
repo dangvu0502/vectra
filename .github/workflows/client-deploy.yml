@@ -1,4 +1,4 @@
-name: Deploy Client
+name: Build and Deploy Client
 
 on:
   push:
@@ -8,40 +8,38 @@ on:
       - '.github/workflows/client-deploy.yml'
 
 jobs:
-  build-and-deploy:
+  build_and_deploy:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v3
-
-      - name: Build client assets
-        run: |
-          cd client/app
-          npm install
-          npm run build
-          cd ../..
-
-      - name: Deploy client to DigitalOcean
+      # Deploy and build on DigitalOcean droplet
+      - name: Deploy and build on DigitalOcean droplet
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.DROPLET_HOST }}
           username: ${{ secrets.DROPLET_USERNAME }}
           key: ${{ secrets.DROPLET_SSH_KEY }}
           script: |
-            mkdir -p /var/www/html
-          script_stop: false
+            # Navigate to the project directory
+            cd /opt/app/vectra
+            
+            # Pull the latest changes
+            git pull origin main
 
-      - name: Sync client assets
-        run: |
-          rsync -avz --delete \
-            --exclude='.git' \
-            --exclude='node_modules' \
-            client/app/dist/ \
-            ${{ secrets.DROPLET_USERNAME }}@${{ secrets.DROPLET_HOST }}:/var/www/html/
-
-      - name: Restart Nginx
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.DROPLET_HOST }}
-          username: ${{ secrets.DROPLET_USERNAME }}
-          key: ${{ secrets.DROPLET_SSH_KEY }}
-          script: systemctl restart nginx 
+            # Navigate to the client directory
+            cd client/app
+            
+            # Install dependencies if needed
+            npm install
+            
+            # Build the React application for production
+            npm run build
+            
+            # Clean the Nginx web directory
+            rm -rf /var/www/html/*
+            
+            # Copy built files to web directory
+            cp -r dist/* /var/www/html/
+            
+            # Restart Nginx to serve new files
+            sudo systemctl restart nginx 
