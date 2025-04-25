@@ -12,34 +12,41 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Deploy and build on DigitalOcean droplet
-      - name: Deploy and build on DigitalOcean droplet
+      # Step 1: Checkout code
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Step 2: Set up Node.js
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      # Step 3: Install dependencies
+      - name: Install dependencies
+        run: |
+          cd client/app
+          npm install
+
+      # Step 4: Build the project
+      - name: Build the project
+        run: |
+          cd client/app
+          npm run build
+
+      # Step 5: Deploy to DigitalOcean
+      - name: Deploy to DigitalOcean
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.DROPLET_HOST }}
           username: ${{ secrets.DROPLET_USERNAME }}
           key: ${{ secrets.DROPLET_SSH_KEY }}
           script: |
-            # Navigate to the project directory
-            cd /opt/app/vectra
-            
-            # Pull the latest changes
-            git pull origin main
-
-            # Navigate to the client directory
-            cd client/app
-            
-            # Install dependencies if needed
-            npm install
-            
-            # Build the React application for production
-            npm run build
-            
             # Clean the Nginx web directory
             rm -rf /var/www/html/*
             
             # Copy built files to web directory
-            cp -r dist/* /var/www/html/
+            cp -r client/app/dist/* /var/www/html/
             
             # Restart Nginx to serve new files
             sudo systemctl restart nginx 
