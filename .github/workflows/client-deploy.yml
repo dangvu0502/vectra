@@ -35,6 +35,7 @@ jobs:
           rsync -avz --delete \
             --exclude='.git' \
             --exclude='node_modules' \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
             client/app/dist/ \
             ${{ secrets.DROPLET_USERNAME }}@${{ secrets.DROPLET_HOST }}:/var/www/html/
 
