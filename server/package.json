@@ -5,6 +5,7 @@
   "scripts": {
     "test": "vitest",
     "dev": "node --env-file=.env --import @swc-node/register/esm-register --watch ./src/main.ts",
+    "docker-dev": "node --import @swc-node/register/esm-register --watch ./src/main.ts",
     "build": "tsc --noEmitOnError false",
     "build:watch": "tsc --watch --noEmitOnError false",
     "start": "node --env-file=.env ./dist/main.js",
