@@ -51,8 +51,8 @@ jobs:
           host: ${{ secrets.DROPLET_HOST }}
           username: ${{ secrets.DROPLET_USERNAME }}
           key: ${{ secrets.DROPLET_SSH_KEY }}
-          source: "client/app/dist/*"
-          target: "/var/www/html/"
+          source: "client/app/dist/"
+          target: "/var/www/html"
 
       # Step 7: Restart Nginx
       - name: Restart Nginx
@@ -61,5 +61,4 @@ jobs:
           host: ${{ secrets.DROPLET_HOST }}
           username: ${{ secrets.DROPLET_USERNAME }}
           key: ${{ secrets.DROPLET_SSH_KEY }}
-          script: |
-            sudo systemctl restart nginx 
+          script: sudo systemctl restart nginx 
