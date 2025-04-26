@@ -39,18 +39,6 @@ app.use(
   })
 );
 
-// Add logging for session initialization
-app.use((req, res, next) => {
-  console.log('🌐 Request received:', {
-    path: req.path,
-    method: req.method,
-    sessionId: req.sessionID,
-    hasSession: !!req.session,
-    hasUser: !!req.user
-  });
-  next();
-});
-
 // Passport middleware
 app.use(passport.initialize());
 app.use(passport.session());

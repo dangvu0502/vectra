@@ -10,22 +10,8 @@ import { env } from "@/config/environment";
 const HOST = env.NODE_ENV === "production" ? env.APP_URL : "http://localhost:5173";
 
 export const getProfile = (req: Request, res: Response) => {
-  console.log('👤 Profile request received');
-  console.log('Session:', req.session ? 'Present' : 'Missing');
-  console.log('User:', req.user ? 'Present' : 'Missing');
-  
   const user = req.user as UserProfile;
-  if (!user) {
-    console.log('❌ No user found in request');
-    return res.status(401).json({ message: 'Unauthorized' });
-  }
-
-  console.log('✅ Sending user profile:', {
-    id: user.id,
-    email: user.email,
-    displayName: user.display_name
-  });
-
+  // Respond with relevant user info (avoid sending sensitive data)
   res.json({
     id: user.id,
     displayName: user.display_name,
@@ -40,11 +26,10 @@ export const getProfile = (req: Request, res: Response) => {
  * TODO: Make the redirect URL configurable.
  */
 export const googleCallbackSuccess = (req: Request, res: Response) => {
-  console.log('🔄 Google callback success handler');
-  console.log('👤 User in request:', req.user ? 'Present' : 'Missing');
-  console.log('🍪 Session:', req.session ? 'Present' : 'Missing');
-  console.log('🔗 Redirecting to:', `${HOST}/`);
-  res.redirect(`${HOST}/`);
+  // Successful authentication
+  // Redirect to the frontend application, potentially passing a token or session info
+  // For now, redirecting to a placeholder frontend route
+  res.redirect(`${HOST}/`); // Adjust this URL to your frontend app
 };
 
 /**
