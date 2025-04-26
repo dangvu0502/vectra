@@ -19,6 +19,9 @@ app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
 app.use(express.json());
 
+// Trust proxy for session cookie in production
+app.set('trust proxy', 1);
+
 // Session middleware
 app.use(
   session({
@@ -30,6 +33,7 @@ app.use(
     saveUninitialized: false,
     cookie: { 
       secure: env.NODE_ENV === 'production',
+      httpOnly: true,
       maxAge: 24 * 60 * 60 * 1000 // 24 hours
     },
   })
