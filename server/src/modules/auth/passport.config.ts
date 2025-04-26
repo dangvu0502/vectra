@@ -4,6 +4,7 @@ import { findUserByProvider, createUser, findUserById } from './auth.service';
 import type { UserProfile } from './auth.types';
 import { env } from '@/config/environment'; // Assuming env config is here
 
+const HOST = env.NODE_ENV === "production" ? env.APP_URL : "http://localhost:3000";
 // Configure Google Strategy
 passport.use(
   new GoogleStrategy(
@@ -11,7 +12,7 @@ passport.use(
       clientID: env.GOOGLE_CLIENT_ID,
       clientSecret: env.GOOGLE_CLIENT_SECRET,
       // Ensure this matches the callback route defined in auth.routes.ts
-      callbackURL: `${env.API_BASE_URL}/auth/google/callback`,
+      callbackURL: `${HOST}/api/auth/google/callback`,
     },
     async (accessToken, refreshToken, profile, done) => {
       try {

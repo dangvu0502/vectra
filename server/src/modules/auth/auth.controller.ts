@@ -1,10 +1,14 @@
 import type { Request, Response } from "express";
 import type { UserProfile } from "./auth.types";
+import { env } from "@/config/environment";
 
 /**
  * Handles the request to get the user's profile.
  * Sends the user's display name if authenticated, otherwise sends 401 Unauthorized.
  */
+
+const HOST = env.NODE_ENV === "production" ? env.APP_URL : "http://localhost:5173";
+
 export const getProfile = (req: Request, res: Response) => {
   const user = req.user as UserProfile;
   // Respond with relevant user info (avoid sending sensitive data)
@@ -25,7 +29,7 @@ export const googleCallbackSuccess = (req: Request, res: Response) => {
   // Successful authentication
   // Redirect to the frontend application, potentially passing a token or session info
   // For now, redirecting to a placeholder frontend route
-  res.redirect("http://localhost:5173/"); // Adjust this URL to your frontend app
+  res.redirect(`${HOST}/`); // Adjust this URL to your frontend app
 };
 
 /**
@@ -36,7 +40,7 @@ export const googleCallbackSuccess = (req: Request, res: Response) => {
 export const googleCallbackFailure = (req: Request, res: Response) => {
   // Authentication failed
   // Redirect to a frontend failure page or back to the login page
-  res.redirect("http://localhost:5173/login/failure"); // Adjust this URL to your frontend app
+  res.redirect(`${HOST}/login/failure`); // Adjust this URL to your frontend app
 };
 
 /**

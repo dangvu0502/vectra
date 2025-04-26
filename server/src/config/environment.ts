@@ -7,7 +7,6 @@ const envSchema = z.object({
   UPLOAD_DIR: z.string().default('uploads'),
   GOOGLE_CLIENT_ID: z.string(),
   GOOGLE_CLIENT_SECRET: z.string(),
-  API_BASE_URL: z.string().default('http://localhost:3000/api'),
   SESSION_SECRET: z.string(),
 
   // ArangoDB Connection Details
@@ -19,6 +18,7 @@ const envSchema = z.object({
   // Redis Connection for BullMQ
   REDIS_URL: z.string().url().default('redis://localhost:6379'),
   OPENROUTER_API_KEY: z.string(),
+  APP_URL: z.string().default('https://sonvh.shop'),
 });
 
 export const env = envSchema.parse(process.env);
