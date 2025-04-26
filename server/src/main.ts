@@ -44,6 +44,12 @@ app.use((req, res, next) => {
     hasSession: !!req.session,
     hasUser: !!req.user
   });
+
+  // Add response cookie logging
+  res.on('finish', () => {
+    console.log('🍪 Response cookies for', req.method, req.originalUrl, ':', res.getHeaders()['set-cookie']);
+  });
+
   next();
 });
 
