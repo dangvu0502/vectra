@@ -1,6 +1,6 @@
 version: '3.8'
 services:
-  server:
+  nodejs:
     image: liked95/vectra:latest
     restart: always
     ports:
