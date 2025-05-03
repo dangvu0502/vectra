@@ -49,12 +49,6 @@ export class ApiKeyQueries {
       .select('user_id', 'id')
       .first();
 
-    if (apiKey) {
-      await this.db('api_keys')
-        .where('id', apiKey.id)
-        .update({ last_used_at: new Date() });
-    }
-
     return apiKey || null;
   }
-} 
+}
