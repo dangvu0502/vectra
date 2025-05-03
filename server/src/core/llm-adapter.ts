@@ -10,4 +10,4 @@ const openrouter = createOpenRouter({
     apiKey: env.OPENROUTER_API_KEY,
 })
 
-export const languageModel = openrouter("google/gemini-2.0-flash-thinking-exp:free")
+export const languageModel = openrouter("meta-llama/llama-4-maverick:free")

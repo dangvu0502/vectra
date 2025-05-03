@@ -57,6 +57,7 @@ export class ApiKeyService {
   }
 
   async validateApiKey(key: string): Promise<{ userId: string; apiKeyId: string } | null> {
+    // Restore Caching Logic
     const cacheKey = `${CACHE_PREFIX}${key}`;
 
     try {
@@ -71,6 +72,12 @@ export class ApiKeyService {
         try {
           // Return cached valid key info
           const parsedValue = JSON.parse(cachedValue);
+          // Safeguard: Handle potential old cache structure { user_id, id }
+          if (parsedValue.user_id) {
+             console.warn(`[ApiKeyService] Mapping old cache structure for key ${key}`);
+             return { userId: parsedValue.user_id, apiKeyId: parsedValue.id };
+          }
+          // Assume correct structure { userId, apiKeyId } otherwise
           return parsedValue;
         } catch (parseError) {
           console.error(`Error parsing cached API key data for key ${key}:`, parseError);
@@ -79,11 +86,11 @@ export class ApiKeyService {
       }
 
       // 2. Cache miss - query database
-      const dbResult = await this.queries.validateApiKey(key);
+      const dbResult = await this.queries.validateApiKey(key); // This now returns { userId, apiKeyId }
 
       // 3. Update cache based on DB result
       if (dbResult) {
-        // Cache valid key info
+        // Cache valid key info (already in correct format)
         await this.redis.set(cacheKey, JSON.stringify(dbResult), { EX: VALID_KEY_TTL });
         return dbResult;
       } else {
@@ -102,6 +109,7 @@ export class ApiKeyService {
         return null; // Return null if both cache and DB fail catastrophically
       }
     }
+    // End of Original Caching Logic
   }
 
 }
