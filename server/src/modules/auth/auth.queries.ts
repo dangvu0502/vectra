@@ -1,7 +1,7 @@
-import { db } from '@/database/connection';
 import { PG_TABLE_NAMES } from '@/database/constants'; // Correct import
 import { v4 as uuidv4 } from 'uuid';
 import type { UserProfile } from './auth.types';
+import { db } from '@/database/postgres/connection';
 
 /**
  * Finds a user by provider and provider ID.

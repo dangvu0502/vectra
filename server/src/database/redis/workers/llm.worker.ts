@@ -1,8 +1,8 @@
-import { languageModel } from '@/core/llm-adapter'; // Assuming LLM adapter export
 import { arangoDbService } from '@/modules/arangodb/arangodb.service'; // Assuming service export
 import { Job, Worker } from 'bullmq';
 import type { LlmJobData } from '../queues'; // Type-only import for job data
 import { LLM_PROCESSING_QUEUE_NAME, getRedisConnectionOptions } from '../queues'; // Import queue name and connection helper
+import { languageModel } from '@/connectors/llm/adapter';
 
 console.log('Initializing LLM Processing Worker...');
 

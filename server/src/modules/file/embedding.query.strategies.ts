@@ -3,7 +3,7 @@ import { embed } from 'ai';
 import type { Knex } from 'knex'; // Import Knex type
 import { type MetadataFilter } from './file.embedding.queries'; // Keep MetadataFilter import
 import { findSimilarEmbeddings, findKeywordMatches } from './embedding.search.queries'; // Import search functions directly
-import { embeddingModel } from '@/core/llm-adapter';
+import { embeddingModel } from '@/connectors/llm/adapter';
 
 // Define a common result type for consistency
 type QueryResultItem = {

@@ -12,3 +12,11 @@ export const PG_TABLE_NAMES = {
   COLLECTION_FILES: 'collection_files', // Join table
   API_KEYS: 'api_keys',
 } as const; // Use 'as const' for stricter typing
+
+/**
+ * ArangoDB Collection Names
+ */
+export const ARANGO_COLLECTION_NAMES = {
+  NODES: 'nodes',
+  EDGES: 'edges',
+} as const;

@@ -1,6 +1,6 @@
 import { Database } from 'arangojs'; // Removed Collection type import
 import { env } from '../../config/environment.js'; // Adjust path as needed
-import { ARANGO_COLLECTION_NAMES } from '../../config/constants.js'; // Import Arango constants
+import { ARANGO_COLLECTION_NAMES } from '../constants.js'; // Import Arango constants from database level
 
 console.log('Initializing ArangoDB client...');
 console.log('ArangoDB URL:', env.ARANGO_URL);

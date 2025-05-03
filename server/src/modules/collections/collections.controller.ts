@@ -16,7 +16,7 @@ import {
 } from '@/shared/errors';
 import { z } from 'zod';
 import { EmbeddingService } from '@/modules/file/file.embedding.service';
-import { db } from '@/database/connection';
+import { db } from '@/database/postgres/connection';
 
 const embeddingService = EmbeddingService.getInstance(db);
 

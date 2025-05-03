@@ -23,7 +23,7 @@ export const addFileToCollectionSchema = z.object({
 export const knowledgeQuerySchema = z.object({
   queryText: z.string().min(1, 'Query text cannot be empty.'),
   limit: z.number().int().positive().max(50).optional().default(10), // Default limit 10, max 50
-  collectionId: z.string().uuid('Invalid Collection ID format.').optional(),
+  collectionId: z.string().uuid('Invalid Collection ID format.'), // Made non-optional
   searchMode: z.enum(['vector', 'keyword', 'hybrid']).optional().default('hybrid'),
   includeMetadataFilters: z.array(z.object({
     field: z.string(),

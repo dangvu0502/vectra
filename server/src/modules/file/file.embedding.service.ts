@@ -3,7 +3,7 @@ import { MDocument } from '@mastra/rag'; // Import rerank
 import { embedMany } from 'ai';
 import type { Knex } from 'knex';
 // Removed direct ollama provider import
-import { languageModel, embeddingModel } from '@/core/llm-adapter';
+import { languageModel, embeddingModel } from '@/connectors/llm/adapter'; // Updated path
 // Removed aql, arangoDbClient, getEdgesCollection, getNodesCollection imports
 import path from 'path';
 import { arangoDbService } from '../arangodb/arangodb.service.js'; // Import the ArangoDB service
