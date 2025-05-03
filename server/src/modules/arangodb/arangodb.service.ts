@@ -2,11 +2,11 @@ import { aql } from 'arangojs';
 // Removed ArrayCursor type import as it seems problematic
 import path from 'path';
 // Removed duplicate: import { aql } from 'arangojs';
-import { arangoDbClient, getEdgesCollection, getNodesCollection } from '../../core/arangodb/client.js';
-import { DocumentNotFoundError } from '../../shared/errors.js';
+import { arangoDbClient, getEdgesCollection, getNodesCollection } from '../../database/arangodb/client.js'; 
 import type { File as DbFileType } from '../file/file.schema';
-import { llmProcessingQueue } from '@/core/queue/queues'; // Import the BullMQ queue
-import type { LlmJobData } from '@/core/queue/queues';
+import { llmProcessingQueue } from '@/database/redis/queues'; // Updated path using alias
+import type { LlmJobData } from '@/database/redis/queues'; // Updated path using alias
+import { DocumentNotFoundError } from '@/shared/errors'; // Removed .js extension
 
 // Define types for clarity
 type ChunkMetadata = Record<string, any> & {

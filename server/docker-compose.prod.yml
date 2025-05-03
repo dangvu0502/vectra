@@ -1,6 +1,6 @@
 services:
   nodejs:
-    image: vectra:latest
+    image: liked95/vectra:latest
     build:
       context: .
       dockerfile: Dockerfile
