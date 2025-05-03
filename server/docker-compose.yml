@@ -1,0 +1,42 @@
+name: vectra
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+
+  redis:
+    image: redis:alpine
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./data/redis:/data
+
+  arangodb:
+    image: arangodb:latest
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - ARANGO_ROOT_PASSWORD=${ARANGO_PASSWORD}
+    ports:
+      - "8529:8529"
+    volumes:
+      - ./data/arangodb:/var/lib/arangodb3
+
+  ollama:
+    image: ollama/ollama
+    restart: always
+    ports:
+      - "11434:11434"
+    volumes:
+      - ./data/ollama:/root/.ollama
+    entrypoint: sh
+    command: -c "ollama serve & PID=$$! ; sleep 10 ; ollama pull nomic-embed-text ; wait $$PID"
+  
