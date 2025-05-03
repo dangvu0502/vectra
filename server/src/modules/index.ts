@@ -1,8 +1,8 @@
-import { db } from "@/database/connection";
 import { createFileModule } from "./file";
 import { createCollectionModule } from "./collections";
 import { createApiKeyModule } from "./api-keys";
 import { createVectraApiModule } from "./vectra-api"; // Import the new module factory
+import { db } from "@/database/postgres/connection";
 
 // Initialize core modules with database connection
 const fileModule = createFileModule(db);

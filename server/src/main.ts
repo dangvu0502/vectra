@@ -2,16 +2,15 @@ import express from 'express';
 import morgan from 'morgan';
 import cors from 'cors';
 import session from 'express-session';
-// @ts-ignore
-import {RedisStore} from "connect-redis"
 import { passport } from './modules/auth';
 import { routes } from './routes';
 import { env } from './config/environment';
-import { initializeApp } from './core/bootstrap'; // Import the new bootstrap function
-import { redisConnection } from './core/queue/connection';
-// Removed fileURLToPath and resolve imports, no longer needed here
+import { initializeApp } from './bootstrap'; 
+import { redisConnection } from './database/redis/connection';
+// @ts-ignore
+import { RedisStore } from 'connect-redis';
 
-export const app = express(); // Export app for bootstrap and potential tests
+const app = express(); // No longer needs export
 
 app.use(cors());
 app.use(express.json());
@@ -46,9 +45,8 @@ app.use(passport.session());
 // Mount the aggregated routes
 app.use('/api/', routes);
 
-initializeApp().catch((error) => {
+initializeApp(app).catch((error) => { // Pass app instance
   // Error is already logged in initializeApp, just ensure exit
   console.error("Application failed to initialize.");
   process.exit(1);
 });
-// No need to export app again, already exported at the top
