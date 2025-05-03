@@ -3,10 +3,11 @@ import { ApiKeyQueries } from './api-keys.queries';
 import { ApiKeyService } from './api-keys.service';
 import { ApiKeyController } from './api-keys.controller';
 import { createApiKeyRoutes } from './api-keys.routes';
+import { redisConnection } from '@/core/queue/connection'; // Import the shared Redis connection
 
 export function createApiKeyModule(db: Knex) {
   const queries = new ApiKeyQueries(db);
-  const service = new ApiKeyService(queries);
+  const service = new ApiKeyService(queries, redisConnection);
   const controller = new ApiKeyController(service);
   const routes = createApiKeyRoutes(controller);
 
@@ -16,4 +17,4 @@ export function createApiKeyModule(db: Knex) {
     controller,
     routes,
   };
-} 
+}

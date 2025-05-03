@@ -19,5 +19,6 @@ export function createFileModule(db: Knex) {
     service,
     controller,
     routes,
+    embeddingService,
   };
 }
