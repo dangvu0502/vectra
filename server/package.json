@@ -5,10 +5,7 @@
   "scripts": {
     "test": "vitest",
     "dev": "node --env-file=.env --import @swc-node/register/esm-register --watch ./src/main.ts",
-    "prod": "node --import @swc-node/register/esm-register --watch ./src/main.ts",
-    "build": "tsc --noEmitOnError false",
-    "build:watch": "tsc --watch --noEmitOnError false",
-    "start": "node --env-file=.env ./dist/main.js",
+    "prod": "node --import @swc-node/register/esm-register ./src/main.ts",
     "migrate:make": "node --env-file=.env --import @swc-node/register/esm-register ./node_modules/knex/bin/cli.js migrate:make",
     "migrate:latest": "node --env-file=.env --import @swc-node/register/esm-register ./node_modules/knex/bin/cli.js migrate:latest",
     "migrate:rollback": "node --env-file=.env --import @swc-node/register/esm-register ./node_modules/knex/bin/cli.js migrate:rollback",

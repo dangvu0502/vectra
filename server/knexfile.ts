@@ -10,7 +10,7 @@ const config: { [key: string]: Knex.Config } = {
       max: 10
     },
     migrations: {
-      directory: './src/database/migrations',
+      directory: './src/database/postgres/migrations', // Updated path
       disableMigrationsListValidation: true,
       loadExtensions: ['.ts'],
       schemaName: 'public',
@@ -19,7 +19,7 @@ const config: { [key: string]: Knex.Config } = {
       extension: 'ts'
     },
     seeds: {
-      directory: './src/database/seeds',
+      directory: './src/database/postgres/seeds', // Updated path
       extension: 'ts'
     }
   },
@@ -32,7 +32,7 @@ const config: { [key: string]: Knex.Config } = {
       max: 10
     },
     migrations: {
-      directory: './src/database/migrations',
+      directory: './src/database/postgres/migrations', // Updated path
       extension: 'ts'
     }
   },
@@ -45,7 +45,7 @@ const config: { [key: string]: Knex.Config } = {
       max: 10
     },
     migrations: {
-      directory: './src/database/migrations',
+      directory: './src/database/postgres/migrations', // Updated path
       extension: 'ts'
     }
   }

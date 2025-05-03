@@ -3,7 +3,7 @@ import type { Knex } from "knex";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
 import { FileConfig } from "@/modules/file/config";
-import { db } from "@/database/connection";
+import { db } from "@/database/postgres/connection"; // Updated path
 import {
   FileNotFoundError,
   CollectionNotFoundError,

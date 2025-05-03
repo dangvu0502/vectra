@@ -181,3 +181,9 @@ yarn.lock
 #server stuffs
 **/uploads
 **/**/fixtures
+
+# Persistent data for services (Postgres, Redis, ArangoDB, Ollama)
+server/data/
+
+#cline stuff
+.clinerules/

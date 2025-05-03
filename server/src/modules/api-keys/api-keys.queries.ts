@@ -46,15 +46,17 @@ export class ApiKeyQueries {
   async validateApiKey(key: string): Promise<{ userId: string; apiKeyId: string } | null> {
     const apiKey = await this.db('api_keys')
       .where({ key, is_active: true })
-      .select('user_id', 'id')
+      .select('user_id', 'id') // Select DB columns
       .first();
 
-    if (apiKey) {
-      await this.db('api_keys')
-        .where('id', apiKey.id)
-        .update({ last_used_at: new Date() });
+    if (!apiKey) {
+      return null;
     }
 
-    return apiKey || null;
+    // Map DB columns to the expected return structure
+    return {
+      userId: apiKey.user_id,
+      apiKeyId: apiKey.id,
+    };
   }
-} 
+}
