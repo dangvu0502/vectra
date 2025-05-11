@@ -1,6 +1,5 @@
 import { z } from 'zod';
 
-// File Schema for validation
 export const fileSchema = z.object({
   id: z.string().uuid(),
   filename: z.string().min(1),
@@ -47,7 +46,6 @@ export const fileSchema = z.object({
 
 export type File = z.infer<typeof fileSchema>;
 
-// Query options schema
 export const querySchema = z.object({
   q: z.string().optional(),
   page: z.string().optional(),
@@ -57,5 +55,3 @@ export const querySchema = z.object({
 }).strict();
 
 export type QueryOptions = z.infer<typeof querySchema>;
-
-// Removed ingestUrlSchema and IngestUrlBody

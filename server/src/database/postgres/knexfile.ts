@@ -1,5 +1,5 @@
 import type { Knex } from 'knex';
-import { env } from './src/config/environment';
+import { env } from '../../config/environment';
 
 const config: { [key: string]: Knex.Config } = {
   development: {
@@ -10,7 +10,7 @@ const config: { [key: string]: Knex.Config } = {
       max: 10
     },
     migrations: {
-      directory: './src/database/postgres/migrations', // Updated path
+      directory: './migrations', // Corrected path
       disableMigrationsListValidation: true,
       loadExtensions: ['.ts'],
       schemaName: 'public',
@@ -19,7 +19,7 @@ const config: { [key: string]: Knex.Config } = {
       extension: 'ts'
     },
     seeds: {
-      directory: './src/database/postgres/seeds', // Updated path
+      directory: './seeds', // Corrected path
       extension: 'ts'
     }
   },
@@ -32,9 +32,16 @@ const config: { [key: string]: Knex.Config } = {
       max: 10
     },
     migrations: {
-      directory: './src/database/postgres/migrations', // Updated path
+      directory: './migrations', // Corrected path
+      disableMigrationsListValidation: true,
+      loadExtensions: ['.ts'],
+      schemaName: 'public',
+      tableName: 'knex_migrations',
+      disableTransactions: false,
       extension: 'ts'
-    }
+    },
+    // Assuming seeds might be added to test later, good to be consistent
+    // seeds: { directory: './seeds', extension: 'ts' } 
   },
 
   production: {
@@ -45,7 +52,12 @@ const config: { [key: string]: Knex.Config } = {
       max: 10
     },
     migrations: {
-      directory: './src/database/postgres/migrations', // Updated path
+      directory: './migrations', // Corrected path
+      disableMigrationsListValidation: true,
+      loadExtensions: ['.ts'],
+      schemaName: 'public',
+      tableName: 'knex_migrations',
+      disableTransactions: false,
       extension: 'ts'
     }
   }

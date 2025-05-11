@@ -18,11 +18,8 @@ const upload = multer({
 export function createFileRoutes(controller: FileController) {
   const router = Router();
 
-  // Apply authentication middleware to all routes
   router.use(ensureAuthenticated);
 
-
-  // Bulk file upload
   router.post('/upload', upload.array('files', 10), (req, res, next) => {
     controller.uploadBulk(req, res, next).catch(next);
   });

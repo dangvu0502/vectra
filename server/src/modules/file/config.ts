@@ -4,8 +4,10 @@ import { z } from 'zod';
 /**
  * Core file module configuration
  */
+// TODO: Review for duplication with src/config/constants.ts (for api paths)
+// and src/shared/config.ts (for upload/pagination defaults). Consolidate if possible.
 export const FileConfig = {
-  api: {
+  api: { // These seem to duplicate global API constants.
     version: 'v1',
     basePath: '/api',
     filesPath: 'files',
@@ -13,11 +15,11 @@ export const FileConfig = {
       return `${this.basePath}/${this.version}/${this.filesPath}`;
     }
   },
-  upload: {
+  upload: { // These are similar to DEFAULT_CONFIG.upload in shared/config.
     directory: 'uploads',
     maxFileSize: 10 * 1024 * 1024, // 10MB
   },
-  pagination: {
+  pagination: { // These are similar to DEFAULT_CONFIG.pagination in shared/config.
     defaultLimit: 10,
     maxLimit: 100,
     defaultSortBy: 'createdAt',

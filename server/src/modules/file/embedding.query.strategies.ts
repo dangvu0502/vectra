@@ -1,11 +1,9 @@
-// Removed direct import of ollama provider
 import { embed } from 'ai';
-import type { Knex } from 'knex'; // Import Knex type
-import { type MetadataFilter } from './file.embedding.queries'; // Keep MetadataFilter import
-import { findSimilarEmbeddings, findKeywordMatches } from './embedding.search.queries'; // Import search functions directly
+import type { Knex } from 'knex';
+import { type MetadataFilter } from './file.embedding.queries';
+import { findSimilarEmbeddings, findKeywordMatches } from './embedding.search.queries';
 import { embeddingModel } from '@/connectors/llm/adapter';
 
-// Define a common result type for consistency
 type QueryResultItem = {
   vector_id: string;
   file_id: string;
@@ -15,9 +13,9 @@ type QueryResultItem = {
   score?: number;    // RRF score
 };
 
-// --- Vector Search Logic ---
+// --- Vector Search Strategy ---
 export async function performVectorSearch(
-  dbOrTrx: Knex | Knex.Transaction, // Accept dbOrTrx instead of runner
+  dbOrTrx: Knex | Knex.Transaction,
   userId: string,
   queryText: string,
   limit: number,
@@ -27,82 +25,78 @@ export async function performVectorSearch(
   maxDistance?: number
 ): Promise<QueryResultItem[]> {
   const { embedding } = await embed({
-    model: embeddingModel, // Use the singleton provider
+    model: embeddingModel,
     value: queryText,
   });
   if (!embedding) {
     throw new Error('Failed to generate embedding for query text.');
   }
-  // Call the imported function directly
   return findSimilarEmbeddings(
-    dbOrTrx, // Pass dbOrTrx
+    dbOrTrx,
     userId, embedding, limit, collectionId,
     includeMetadataFilters, excludeMetadataFilters, maxDistance
   );
 }
 
-// --- Keyword Search Logic ---
+// --- Keyword Search Strategy ---
 export async function performKeywordSearch(
-  dbOrTrx: Knex | Knex.Transaction, // Accept dbOrTrx instead of runner
+  dbOrTrx: Knex | Knex.Transaction,
   userId: string,
   queryText: string,
   limit: number,
   collectionId?: string
-  // TODO: Add metadata filters if needed in the future
+  // TODO: Add metadata filters for keyword search if needed.
 ): Promise<QueryResultItem[]> {
-  // Call the imported function directly
   return findKeywordMatches(
-    dbOrTrx, // Pass dbOrTrx
+    dbOrTrx,
     userId, queryText, limit, collectionId
   );
 }
 
-// --- Reciprocal Rank Fusion (RRF) Logic ---
+// --- Reciprocal Rank Fusion (RRF) Strategy ---
 export function applyRRF(
   vectorResults: QueryResultItem[],
   keywordResults: QueryResultItem[],
   limit: number,
-  kRRF: number = 60 // Default RRF constant
+  kRRF: number = 60 // RRF ranking constant (default 60)
 ): QueryResultItem[] {
   const rrfScores: { [key: string]: { score: number; data: QueryResultItem } } = {};
 
-  // Process vector results (lower distance is better rank)
+  // Calculate RRF score contribution from vector results
   vectorResults.forEach((result, index) => {
-    const rank = index + 1;
-    const score = 1 / (kRRF + rank);
+    const rank = index + 1; // Rank based on vector search order
+    const scoreContribution = 1 / (kRRF + rank);
     if (!rrfScores[result.vector_id]) {
-      // Keep original data, including distance
-      rrfScores[result.vector_id] = { score: 0, data: { ...result } };
+      rrfScores[result.vector_id] = { score: 0, data: { ...result } }; // Preserve original data
     }
-    rrfScores[result.vector_id].score += score;
+    rrfScores[result.vector_id].score += scoreContribution;
   });
 
-  // Process keyword results (higher rank is better rank)
+  // Calculate RRF score contribution from keyword results
   keywordResults.forEach((result, index) => {
-    const rank = index + 1; // Rank is directly from DB query order (desc)
-    const score = 1 / (kRRF + rank);
+    const rank = index + 1; // Rank based on keyword search order
+    const scoreContribution = 1 / (kRRF + rank);
     if (!rrfScores[result.vector_id]) {
-      // If only found by keyword, store its data but initialize score
-      rrfScores[result.vector_id] = { score: 0, data: { ...result } }; // Keep original data, including rank
+      rrfScores[result.vector_id] = { score: 0, data: { ...result } }; // Preserve original data
     } else {
-      // If already present from vector search, just add score and keyword rank info
-      rrfScores[result.vector_id].data.rank = result.rank;
+      // If item also in vector results, store its keyword rank for context
+      rrfScores[result.vector_id].data.rank = result.rank; 
     }
-    rrfScores[result.vector_id].score += score;
+    rrfScores[result.vector_id].score += scoreContribution;
   });
 
-  // Combine and sort
+  // Combine results, add final RRF score, and sort
   const combined = Object.values(rrfScores).map(item => ({
-    ...item.data, // Includes vector_id, file_id, metadata, distance?, rank?
-    score: item.score // Add the final RRF score
+    ...item.data, // Original data (vector_id, file_id, metadata, distance?, keyword_rank?)
+    score: item.score // Final RRF score
   }));
 
-  combined.sort((a, b) => b.score - a.score); // Sort by RRF score descending
+  combined.sort((a, b) => (b.score ?? 0) - (a.score ?? 0)); // Sort by RRF score descending
 
   return combined.slice(0, limit);
 }
 
-// --- Reranking Logic (Currently Disabled) ---
+// --- Reranking Strategy (Currently Disabled) ---
 // TODO: Re-enable reranking by uncommenting this section and the corresponding call
 //       in EmbeddingService.queryEmbeddings. Ensure type compatibility issues are resolved.
 /*

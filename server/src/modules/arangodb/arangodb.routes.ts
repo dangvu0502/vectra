@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { arangoDbController } from './arangodb.controller.js';
+import { arangoDbController } from './arangodb.controller'; // Removed .js
 // import { requireAuth } from '../auth/auth.middleware'; // Optional: Add auth if needed
 
 const router = Router();

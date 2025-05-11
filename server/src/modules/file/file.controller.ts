@@ -1,24 +1,31 @@
 import type { Request, Response, NextFunction } from "express";
 import fs from "fs/promises";
 import { z } from "zod";
-import { FileNotFoundError, ForbiddenError } from "@/shared/errors"; // Import ForbiddenError
-import type { IFileService } from "./file.service";
-import { fileService } from "./file.service";
-// Removed ingestUrlSchema from import
+import { FileNotFoundError, ForbiddenError } from "@/shared/errors";
+import { fileService, FileService } from "./file.service"; // Consolidated FileService import
 import {
-  fileSchema,
+  // fileSchema, // fileSchema seems unused in this controller directly
   querySchema,
   type File as DbFileType,
 } from "./file.schema";
-import { v4 as uuidv4 } from "uuid";
-import { TEST_USER_ID } from "@/database/constants"; // Assuming TEST_USER_ID is still used for auth placeholder
 import type { UserProfile } from "@/modules/auth/auth.types";
-import { FileService } from "./file.service";
 
-// Zod schema for ID parameter validation
-const IdParamSchema = z.object({
-  id: z.string().uuid("Invalid File ID format"),
-});
+// Helper function to format the embedding status part of the response
+const formatEmbeddingStatusResponse = (metadata: DbFileType['metadata']) => {
+  if (metadata?.embeddingsCreated) {
+    return {
+      embeddingStatus: "success",
+      embeddingTimestamp: metadata.embeddingsTimestamp,
+    };
+  }
+  if (metadata?.embeddingError) {
+    return {
+      embeddingStatus: "error",
+      embeddingError: metadata.embeddingError,
+    };
+  }
+  return { embeddingStatus: "pending" };
+};
 
 export class FileController {
   constructor(private readonly fileService: FileService) {}
@@ -49,26 +56,13 @@ export class FileController {
         message: "File uploaded successfully",
         data: {
           ...file,
-          embedding: file.metadata?.embeddingsCreated
-            ? {
-                embeddingStatus: "success",
-                embeddingTimestamp: file.metadata.embeddingsTimestamp,
-              }
-            : file.metadata?.embeddingError
-              ? {
-                  embeddingStatus: "error",
-                  embeddingError: file.metadata.embeddingError,
-                }
-              : { embeddingStatus: "pending" },
+          embedding: formatEmbeddingStatusResponse(file.metadata),
         },
       });
     } catch (error) {
       console.error("Error uploading file:", error);
-      if (error instanceof FileNotFoundError) {
-        res.status(404).json({ message: error.message });
-        return;
-      }
-      res.status(500).json({ message: "Internal server error" });
+      // Pass error to central handler for consistency
+      next(error);
     }
   };
 
@@ -132,17 +126,7 @@ export class FileController {
           message: "Some files were uploaded successfully, others failed.",
           data: uploadedFilesInfo.map((file: DbFileType) => ({
             ...file,
-            embedding: file.metadata?.embeddingsCreated
-              ? {
-                  embeddingStatus: "success",
-                  embeddingTimestamp: file.metadata.embeddingsTimestamp,
-                }
-              : file.metadata?.embeddingError
-                ? {
-                    embeddingStatus: "error",
-                    embeddingError: file.metadata.embeddingError,
-                  }
-                : { embeddingStatus: "pending" },
+            embedding: formatEmbeddingStatusResponse(file.metadata),
           })),
           errors,
         });
@@ -152,17 +136,7 @@ export class FileController {
           message: "All files uploaded successfully.",
           data: uploadedFilesInfo.map((file: DbFileType) => ({
             ...file,
-            embedding: file.metadata?.embeddingsCreated
-              ? {
-                  embeddingStatus: "success",
-                  embeddingTimestamp: file.metadata.embeddingsTimestamp,
-                }
-              : file.metadata?.embeddingError
-                ? {
-                    embeddingStatus: "error",
-                    embeddingError: file.metadata.embeddingError,
-                  }
-                : { embeddingStatus: "pending" },
+            embedding: formatEmbeddingStatusResponse(file.metadata),
           })),
         });
       }
@@ -193,17 +167,7 @@ export class FileController {
         data: {
           files: result.files.map((file) => ({
             ...file,
-            embedding: file.metadata?.embeddingsCreated
-              ? {
-                  embeddingStatus: "success",
-                  embeddingTimestamp: file.metadata.embeddingsTimestamp,
-                }
-              : file.metadata?.embeddingError
-                ? {
-                    embeddingStatus: "error",
-                    embeddingError: file.metadata.embeddingError,
-                  }
-                : { embeddingStatus: "pending" },
+            embedding: formatEmbeddingStatusResponse(file.metadata),
           })),
           total: result.total,
         },
@@ -230,7 +194,8 @@ export class FileController {
       res.json({ data: file });
     } catch (error) {
       console.error("Error getting file:", error);
-      res.status(500).json({ message: "Internal server error" });
+      // Pass error to central handler for consistency
+      next(error);
     }
   };
 
@@ -268,7 +233,7 @@ export class FileController {
         data: { collections },
       });
     } catch (error) {
-      // Handle specific errors like FileNotFoundError or ForbiddenError if needed
+      // TODO: Handle specific errors like FileNotFoundError or ForbiddenError if needed from service
       if (error instanceof z.ZodError) {
         return void res
           .status(400)
@@ -278,10 +243,9 @@ export class FileController {
         return void res.status(404).json({ message: error.message });
       }
       if (error instanceof ForbiddenError) {
-        // Now ForbiddenError is recognized
         return void res.status(403).json({ message: error.message });
       }
-      next(error); // Pass other errors (including unknown) to the central error handler
+      next(error);
     }
   };
 }

@@ -1,9 +1,8 @@
 import { z } from 'zod';
 
-// General API Constants
-export const API_VERSION = 'v1';
-export const BASE_PATH = '/api';
-export const FILES_PATH = 'files'; // Kept for reference, used in FileConfig
+// Note: API_VERSION, BASE_PATH, FILES_PATH are defined in 'src/config/constants.ts'
+// and should be imported from there if needed in this shared context.
+// FILES_PATH was previously here with comment: Kept for reference, used in FileConfig
 
 // Default configurations (can be shared or moved if specific modules need overrides)
 export const DEFAULT_CONFIG = {
@@ -28,4 +27,3 @@ export const EmbeddingConfigSchema = z.object({
 });
 
 export type EmbeddingConfig = z.infer<typeof EmbeddingConfigSchema>;
-

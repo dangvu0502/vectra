@@ -1,10 +1,8 @@
 import { ollama } from 'ollama-ai-provider';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
-import { env } from '../../config/environment'; // Adjust path
+import { env } from '../../config/environment';
 
-export const embeddingModel = ollama.embedding('nomic-embed-text'); // Corrected variable name
-
-// export const languageModel = ollama('cogito:latest')
+export const embeddingModel = ollama.embedding('nomic-embed-text');
 
 const openrouter = createOpenRouter({
     apiKey: env.OPENROUTER_API_KEY,

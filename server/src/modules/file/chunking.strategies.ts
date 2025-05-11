@@ -1,10 +1,10 @@
-// Base parameters can be defined here or passed in
+// Default base parameters for chunking. These can be overridden.
 export const defaultBaseChunkParams = {
-  size: 256, // Default chunk size in tokens/characters depending on strategy
-  overlap: 50, // Default overlap between chunks to maintain local context
-  // Potential future extraction config:
+  size: 256, // Default chunk size (tokens/characters based on strategy)
+  overlap: 50, // Default overlap between chunks
+  // TODO: Consider future LLM-based extraction config for titles, keywords, etc.
   // extract: {
-  //   title: { llm: cogito },
+  //   title: { llm: someLanguageModel },
   //   questions: { llm: cogito },
   //   keywords: { llm: cogito },
   // }
@@ -16,81 +16,71 @@ export const defaultBaseChunkParams = {
  * @param baseParams - Optional base parameters to override defaults.
  * @returns The specific chunking parameters for the given file type.
  */
+// TODO: Refactor to use a defined type for chunking parameters instead of 'any'.
 export function getChunkingParams(fileType: string, baseParams: any = defaultBaseChunkParams): any {
   let specificParams: any = {};
 
-  // Determine strategy and specific parameters based on file type
-  // Aims for context-aware chunking where possible (e.g., Markdown, HTML)
+  // Strategies aim for context-aware chunking where possible.
   switch (fileType) {
     case '.md':
-      // Markdown strategy attempts to respect document structure (sections, paragraphs)
+      // Markdown: Respects document structure (sections, paragraphs).
       specificParams = {
         strategy: 'markdown',
-        // Enable header extraction to capture structure (adjust levels as needed)
+        // Header extraction captures structure (adjust levels as needed).
         headers: [
             ['#', 'h1'],
             ['##', 'h2'],
             ['###', 'h3'],
-            // Add more levels if necessary ['####', 'h4'], etc.
+            // TODO: Consider adding more header levels if necessary.
         ],
-        size: 512, // Larger size often suitable for markdown documents
+        size: 512, // Larger size often suitable for markdown.
       };
       break;
     case '.html':
     case '.htm':
       specificParams = {
         strategy: 'html',
-        size: 512, // Larger size for HTML
+        size: 512,
       };
       break;
     case '.json':
-      // Note: 'maxSize' is specific to JSON strategy, 'size' might not apply directly
+      // JSON strategy uses 'maxSize' for chunks; 'size' and 'overlap' are typically irrelevant.
       specificParams = {
         strategy: 'json',
         maxSize: 1024,
-        // Ensure size/overlap from base are not included if irrelevant
-        size: undefined,
-        overlap: undefined,
+        size: undefined,    // Explicitly override base 'size'
+        overlap: undefined, // Explicitly override base 'overlap'
       };
       break;
     case '.tex':
       specificParams = {
         strategy: 'latex',
-        size: 512, // Larger size for LaTeX
+        size: 512,
       };
       break;
-    // Add cases for other file types like .pdf, .docx, .csv etc. if needed
-    // case '.pdf':
-    //   specificParams = { strategy: 'pdf', size: 512 }; // Example
-    //   break;
-    default: // Default to token strategy for unknown or plain text files
+    // TODO: Add cases for other file types like .pdf, .docx, .csv as needed.
+    default:
+      // Default to token-based strategy for unknown or plain text files.
       specificParams = {
         strategy: 'token',
-        // Use default size/overlap from baseParams
+        // Inherits size/overlap from baseParams.
       };
       break;
   }
 
-  // Merge base parameters with specific overrides
-  // Ensure specific undefined values correctly override base values if needed
+  // Merge base parameters with type-specific overrides.
+  // Explicitly undefined values in specificParams will remove the corresponding key from baseParams.
   const finalParams = { ...baseParams };
   for (const key in specificParams) {
     if (specificParams[key] !== undefined) {
       finalParams[key] = specificParams[key];
     } else {
-      // If specificParam is explicitly undefined, remove the key from base
       delete finalParams[key];
     }
   }
-
-
-  // Clean up potentially conflicting params if strategy changed size/overlap relevance
-  if (finalParams.strategy === 'json' && finalParams.size !== undefined) {
-     // console.warn("Removing 'size' param for JSON strategy as 'maxSize' is used.");
-     delete finalParams.size;
-     delete finalParams.overlap; // Overlap likely irrelevant too
-  }
-
+  
+  // Note: The logic to delete size/overlap for JSON is now handled by setting them to undefined
+  // in the specificParams for the '.json' case, which then get removed by the merging loop.
 
   return finalParams;
 }

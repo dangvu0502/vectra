@@ -7,25 +7,23 @@ import { routes } from './routes';
 import { env } from './config/environment';
 import { initializeApp } from './bootstrap'; 
 import { redisConnection } from './database/redis/connection';
-// @ts-ignore
+// @ts-ignore - connect-redis types might not align perfectly with express-session
 import { RedisStore } from 'connect-redis';
 
-const app = express(); // No longer needs export
+const app = express();
 
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
-app.use(express.json());
 
 // Trust proxy for session cookie in production
 app.set('trust proxy', 1);
 
-// Session middleware
 app.use(
   session({
     name: 'session',
-    // @ts-ignore
+    // @ts-ignore - RedisStore constructor might have type incompatibilities with session store type
     store: new RedisStore({ client: redisConnection }),
     secret: env.SESSION_SECRET,
     resave: false,
@@ -33,19 +31,17 @@ app.use(
     cookie: { 
       secure: env.NODE_ENV === 'production',
       httpOnly: true,
-      maxAge: 24 * 60 * 60 * 1000 // 24 hours
+      maxAge: 24 * 60 * 60 * 1000
     },
   })
 );
 
-// Passport middleware
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Mount the aggregated routes
 app.use('/api/', routes);
 
-initializeApp(app).catch((error) => { // Pass app instance
+initializeApp(app).catch((error) => {
   // Error is already logged in initializeApp, just ensure exit
   console.error("Application failed to initialize.");
   process.exit(1);

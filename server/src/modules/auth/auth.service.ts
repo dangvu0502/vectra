@@ -1,11 +1,9 @@
-// Removed unused imports: import { db } from '@/database/connection';
-// Removed unused imports: import { v4 as uuidv4 } from 'uuid';
-import type { UserProfile } from './auth.types'; // Import the type
+import type { UserProfile } from './auth.types';
 import {
   findUserByProviderQuery,
   createUserQuery,
   findUserByIdQuery,
-} from './auth.queries'; // Import query functions
+} from './auth.queries';
 
 /**
  * Finds a user by provider and provider ID.
@@ -17,7 +15,6 @@ export const findUserByProvider = async (
   provider: string,
   providerId: string
 ): Promise<UserProfile | undefined> => {
-  // Use the imported query function
   return findUserByProviderQuery(provider, providerId);
 };
 
@@ -33,7 +30,6 @@ export const createUser = async (userData: {
   display_name?: string;
   profile_picture_url?: string | null;
 }): Promise<UserProfile> => {
-  // Use the imported query function
   return createUserQuery(userData);
 };
 
@@ -43,6 +39,5 @@ export const createUser = async (userData: {
  * @returns The user profile if found, otherwise undefined.
  */
 export const findUserById = async (id: string): Promise<UserProfile | undefined> => {
-  // Use the imported query function
   return findUserByIdQuery(id);
 };

@@ -26,7 +26,6 @@ export class DocumentProcessingError extends DocumentError {
   }
 }
 
-// Collection-related errors
 export class CollectionError extends Error {
   constructor(message: string) {
     super(message);
@@ -55,7 +54,6 @@ export class ApiKeyNotFoundError extends Error {
   }
 }
 
-// General App Errors
 export class AppError extends Error {
   public readonly statusCode: number;
 
@@ -68,13 +66,11 @@ export class AppError extends Error {
 
 export class ForbiddenError extends AppError {
   constructor(message: string = 'Forbidden') {
-    super(message, 403); // HTTP 403 Forbidden status code
+    super(message, 403);
     this.name = 'ForbiddenError';
   }
 }
 
-
-// File-related errors
 export class FileError extends Error {
   constructor(message: string) {
     super(message);

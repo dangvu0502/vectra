@@ -1,5 +1,5 @@
 import type { Knex } from 'knex';
-import { TEST_USER_ID, PG_TABLE_NAMES } from '../constants';
+import { TEST_USER_ID, PG_TABLE_NAMES } from '../../constants'; // Corrected path
 
 // Constant test user ID that we can reference in other parts of the application
 export async function seed(knex: Knex): Promise<void> {
