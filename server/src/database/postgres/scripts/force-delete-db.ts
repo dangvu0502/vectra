@@ -6,6 +6,7 @@ import type { Knex } from 'knex';
 const TABLES_TO_DROP = [
   'text_embeddings', // Depends on users, files, collections (indirectly via collection_files)
   'collection_files', // Depends on collections, files
+  'api_keys',         // Depends on users - ADDED
   'files',            // Depends on users
   'collections',      // Depends on users
   'users',            // Base table

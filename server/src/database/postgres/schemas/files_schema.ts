@@ -1,12 +1,12 @@
 import type { Knex } from 'knex';
-import { PG_TABLE_NAMES } from '../constants';
+import { PG_TABLE_NAMES } from '../../constants';
 
 export const files_schema = {
   up: async function up(knex: Knex): Promise<void> {
     return knex.transaction(async (trx) => {
-      // Verify users table exists first (files depend on users)
+      // Files depend on users table for user_id foreign key
       const hasUsers = await trx.schema.hasTable(PG_TABLE_NAMES.USERS);
-      if (!hasUsers) throw new Error(`${PG_TABLE_NAMES.USERS} table must exist first`);
+      if (!hasUsers) throw new Error(`Table "${PG_TABLE_NAMES.USERS}" must exist first`);
 
       await trx.schema.createTable(PG_TABLE_NAMES.FILES, (table) => {
         table.uuid('id').primary();
@@ -18,7 +18,6 @@ export const files_schema = {
         table.timestamps(true, true);
       });
 
-      // Add indexes
       await trx.schema.raw(`CREATE INDEX files_content_idx ON ${PG_TABLE_NAMES.FILES} USING gin(to_tsvector('english', content))`);
     });
   },

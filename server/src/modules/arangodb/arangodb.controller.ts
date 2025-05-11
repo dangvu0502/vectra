@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
-import { arangoDbService } from './arangodb.service.js';
-import { DocumentNotFoundError } from '../../shared/errors.js'; // Import the specific error
+import { arangoDbService } from './arangodb.service'; // Removed .js
+import { DocumentNotFoundError } from '../../shared/errors'; // Removed .js
 
 export class ArangoDbController {
 
@@ -16,11 +16,9 @@ export class ArangoDbController {
       res.status(200).json({ status: 'success', data: nodeData });
 
     } catch (error) {
-      // Handle specific errors like "not found" differently
       if (error instanceof DocumentNotFoundError) {
         res.status(404).json({ status: 'error', message: error.message });
       } else {
-        // Pass other errors to the generic error handler
         next(error);
       }
     }

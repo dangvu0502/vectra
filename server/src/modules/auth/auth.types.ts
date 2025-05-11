@@ -1,4 +1,3 @@
-// Define a custom user interface
 export interface UserProfile {
   id: string;
   provider: string;

@@ -2,28 +2,27 @@ import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import { findUserByProvider, createUser, findUserById } from './auth.service';
 import type { UserProfile } from './auth.types';
-import { env } from '@/config/environment'; // Assuming env config is here
+import { env } from '@/config/environment';
 
-const HOST = env.NODE_ENV === "production" ? env.APP_URL : "http://localhost:3000";
-// Configure Google Strategy
+const HOST = env.NODE_ENV === "production" ? env.APP_URL : "http://localhost:3000"; // Base URL for constructing callback
+
 passport.use(
   new GoogleStrategy(
     {
       clientID: env.GOOGLE_CLIENT_ID,
       clientSecret: env.GOOGLE_CLIENT_SECRET,
-      // Ensure this matches the callback route defined in auth.routes.ts
+      // This callbackURL must be registered in the Google Cloud Console for your OAuth client
+      // and match the route defined in auth.routes.ts (e.g., /api/auth/google/callback).
       callbackURL: `${HOST}/api/auth/google/callback`,
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
-        // Check if the user already exists
         const existingUser = await findUserByProvider('google', profile.id);
 
         if (existingUser) {
           return done(null, existingUser);
         }
 
-        // Create a new user if they don't exist
         const newUser = await createUser({
           provider: 'google',
           provider_id: profile.id,
@@ -41,18 +40,18 @@ passport.use(
   )
 );
 
-// Serialize user: Determine what data of the user object should be stored in the session
-passport.serializeUser((user: any, done) => {
-  // Store only the user ID in the session
-  done(null, user.id);
+// serializeUser determines which data of the user object should be stored in the session.
+// Typically, only the user ID is stored to keep the session data small.
+passport.serializeUser((user: any, done) => { // user object comes from the strategy's done() callback
+  done(null, user.id); // Store user.id in the session
 });
 
-// Deserialize user: Retrieve user data from the session using the ID
-passport.deserializeUser(async (id: string, done) => {
+// deserializeUser retrieves the full user data from the database using the ID stored in the session.
+passport.deserializeUser(async (id: string, done) => { // id is the user.id stored by serializeUser
   try {
     const user = await findUserById(id);
     if (user) {
-      done(null, user as UserProfile); // Pass the full user profile
+      done(null, user as UserProfile); // User object is attached to req.user
     } else {
       done(new Error('User not found during deserialization.'));
     }
@@ -62,5 +61,4 @@ passport.deserializeUser(async (id: string, done) => {
   }
 });
 
-// Export the configured passport instance
 export { passport };

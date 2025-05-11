@@ -1,5 +1,5 @@
 import type { Knex } from 'knex';
-import { PG_TABLE_NAMES } from '../constants';
+import { PG_TABLE_NAMES } from '../../constants';
 
 export const users_schema = {
   up: async function up(knex: Knex): Promise<void> {
@@ -14,7 +14,6 @@ export const users_schema = {
         table.timestamps(true, true);
       });
 
-      // Add unique index for provider and provider_id
       await trx.schema.raw(
         `CREATE UNIQUE INDEX provider_id_idx ON ${PG_TABLE_NAMES.USERS} (provider, provider_id)`
       );

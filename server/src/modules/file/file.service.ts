@@ -3,7 +3,7 @@ import type { Knex } from "knex";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
 import { FileConfig } from "@/modules/file/config";
-import { db } from "@/database/postgres/connection"; // Updated path
+import { db } from "@/database/postgres/connection";
 import {
   FileNotFoundError,
   CollectionNotFoundError,
@@ -18,17 +18,17 @@ import {
   type IEmbeddingService,
 } from "./file.embedding.service";
 import type { Collection } from "@/modules/collections/collections.validation";
-import { createCollectionModule } from "../collections";
+import { createCollectionModule } from "../collections"; // Not used if CollectionQueries is directly instantiated
 import { FileQueries } from './file.queries';
 import { CollectionQueries } from '@/modules/collections/collections.queries';
 
-const collectionModule = createCollectionModule(db);
-// Interface using DbFileType and QueryOptions from model.ts
+// const collectionModule = createCollectionModule(db); // Seems unused, CollectionQueries is newed up directly
+
 export interface IFileService {
   upload(params: {
     file: Express.Multer.File;
     content: string;
-    collectionId?: string; // Keep optional collectionId for linking
+    collectionId?: string;
     userId: string;
   }): Promise<DbFileType>;
   query(
@@ -37,9 +37,7 @@ export interface IFileService {
   ): Promise<{ files: DbFileType[]; total: number }>;
   findById(userId: string, id: string): Promise<DbFileType | null>;
   delete(userId: string, id: string): Promise<void>;
-  // Removed ingestUrl method signature
-  // Methods related to direct file-collection links (add/remove/getFilesIn) are removed
-  getCollectionsForFile(fileId: string, userId: string): Promise<Collection[]>; // Use Collection type
+  getCollectionsForFile(fileId: string, userId: string): Promise<Collection[]>;
 }
 
 export class FileService implements IFileService {
@@ -69,21 +67,18 @@ export class FileService implements IFileService {
     const newPath = path.join(uploadDir, newFilename);
 
     let createdDbFile: DbFileType;
-    let transaction: Knex.Transaction | null = null; // Use transaction for atomicity
+    let transaction: Knex.Transaction | null = null;
 
     try {
-      transaction = await db.transaction(); // Start transaction
+      transaction = await db.transaction();
 
       await fs.rename(file.path, newPath);
 
-      // Prepare file data *without* collection_id
       const fileData = {
         id: fileId,
         filename: file.originalname,
         path: newPath,
-        // Sanitize content to remove null bytes before saving
-        content: content.replace(/\0/g, ""),
-        // collection_id: null, // REMOVED - No longer a direct column
+        content: content.replace(/\0/g, ""), // Sanitize content
         user_id: userId,
         metadata: {
           originalSize: file.size,
@@ -94,18 +89,16 @@ export class FileService implements IFileService {
         updated_at: new Date(),
       };
 
-      // Insert file metadata within the transaction
       createdDbFile = await this.queries.insertFile(fileData);
 
-      // If collectionId is provided, create the link in the join table
       if (collectionId) {
-        // Verify user owns the target collection (important for security)
+        // Verify user owns the target collection before linking
         const targetCollection = await this.collectionQueries.findCollectionById(
           collectionId,
           userId
         );
         if (!targetCollection) {
-          throw new CollectionNotFoundError(collectionId); // Or ForbiddenError if preferred
+          throw new CollectionNotFoundError(collectionId);
         }
         await this.collectionQueries.addFileLink(
           collectionId,
@@ -117,9 +110,9 @@ export class FileService implements IFileService {
         );
       }
 
-      await transaction.commit(); // Commit transaction
+      await transaction.commit();
 
-      // Asynchronously process embeddings (outside transaction)
+      // Asynchronously process embeddings (outside the main transaction)
       const fileForEmbedding: DbFileType = createdDbFile;
       this.embeddingService
         .processFile(fileForEmbedding)
@@ -132,7 +125,7 @@ export class FileService implements IFileService {
             new Date().toISOString()
           );
         })
-        .catch((embeddingError) => {
+        .catch((embeddingError: unknown) => {
           console.error(`Embedding failed for file ${fileId}:`, embeddingError);
           const errorMsg =
             embeddingError instanceof Error
@@ -145,19 +138,19 @@ export class FileService implements IFileService {
     } catch (error) {
       console.error("Error during file upload:", error);
       if (transaction) {
-        await transaction.rollback(); // Rollback transaction on error
+        await transaction.rollback();
       }
-      // Cleanup logic remains the same
+      // Attempt to cleanup uploaded file if error occurred
       if (newPath) {
-        fs.unlink(newPath).catch((cleanupError) =>
-          console.error("Error cleaning up file:", cleanupError)
+        fs.unlink(newPath).catch((cleanupError: unknown) =>
+          console.error("Error cleaning up file:", cleanupError instanceof Error ? cleanupError.message : cleanupError)
         );
       } else if (file.path) {
-        fs.unlink(file.path).catch((cleanupError) =>
-          console.error("Error cleaning up temp file:", cleanupError)
+        fs.unlink(file.path).catch((cleanupError: unknown) =>
+          console.error("Error cleaning up temp file:", cleanupError instanceof Error ? cleanupError.message : cleanupError)
         );
       }
-      throw error; // Re-throw the original error
+      throw error;
     }
   }
 
@@ -179,38 +172,41 @@ export class FileService implements IFileService {
       throw new FileNotFoundError(id);
     }
 
-    // Note: Deleting the file record will cascade delete entries in collection_files
-    // due to the foreign key constraint `onDelete('CASCADE')`.
-    // We don't need to manually delete from the join table.
+    // Foreign key `onDelete('CASCADE')` on `collection_files` handles join table cleanup.
+    // Foreign key `onDelete('CASCADE')` on `text_embeddings` (if file_id is FK) would handle embedding cleanup at DB level.
+    // Application-level async deletion of embeddings is also an option if not handled by DB cascade.
 
     try {
       const deletedRows = await this.queries.deleteFileById(userId, id);
 
-      if (deletedRows === 0) {
-        console.warn(
-          `File with id "${id}" was found but delete operation affected 0 rows.`
-        );
-      } else {
+      if (deletedRows > 0) {
         console.log(`Deleted file record for id "${id}" from database.`);
+      } else {
+        // This case implies the file was found by findFileById but then delete failed to affect rows,
+        // or it was deleted by another process between find and delete.
+        console.warn(
+          `File with id "${id}" delete operation affected 0 rows, though it was initially found.`
+        );
       }
 
-      // Delete embeddings asynchronously
+      // Asynchronously delete embeddings
       this.embeddingService
         .deleteFileEmbeddings(id)
-        .catch((embeddingError: any) => {
+        .catch((embeddingError: unknown) => {
           console.error(
             `Error during async deletion of embeddings for file ${id}:`,
-            embeddingError
+            embeddingError instanceof Error ? embeddingError.message : embeddingError
           );
         });
 
-      // Delete the actual file
+      // Delete the actual file from filesystem
       try {
         await fs.unlink(fileToDelete.path);
-        console.log(`Deleted file: ${fileToDelete.path}`);
-      } catch (fileError: any) {
+        console.log(`Deleted file from filesystem: ${fileToDelete.path}`);
+      } catch (fileError: unknown) {
         console.error(
-          `Error deleting file ${fileToDelete.path} for file ${id}: ${fileError.message}`
+          `Error deleting file ${fileToDelete.path} for file ${id}:`,
+          fileError instanceof Error ? fileError.message : fileError
         );
       }
     } catch (dbError) {
@@ -219,35 +215,31 @@ export class FileService implements IFileService {
     }
   }
 
-  // Updated method to use Collection type and query from collections module
   async getCollectionsForFile(
     fileId: string,
     userId: string
   ): Promise<Collection[]> {
-    // 1. Verify the user owns the file (still good practice)
+    // Verify the user owns the file before fetching its collections
     const file = await this.queries.findFileById(userId, fileId);
     if (!file) {
       throw new FileNotFoundError(fileId);
     }
+    // Redundant check if findFileById already scopes by userId, but good for explicit auth assertion.
     if (file.user_id !== userId) {
-      // Although the query below also checks ownership via join, this provides an earlier exit
       throw new ForbiddenError("User does not own this file.");
     }
 
-    // 2. Fetch collections using the query from collections.queries
-    // This query implicitly handles user ownership check via joins
+    // This query in collections.queries should implicitly handle user ownership of collections
+    // or be designed to only return collections the user has access to in relation to the file.
     const collections = await this.collectionQueries.findCollectionsByFileId(
       fileId,
       userId
     );
-    // The query in collections.queries already returns Collection[]
     return collections;
   }
 }
 
-// Keep instance export
 const embeddingService = EmbeddingService.getInstance(db);
-// Removed firecrawlService argument from getInstance call
 export const fileService = new FileService(
   new FileQueries(db),
   embeddingService,

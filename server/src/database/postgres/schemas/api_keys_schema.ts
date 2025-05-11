@@ -1,5 +1,5 @@
 import type { Knex } from 'knex';
-import { PG_TABLE_NAMES } from '../constants';
+import { PG_TABLE_NAMES } from '../../constants';
 
 export const api_keys_schema = {
   up: async function up(knex: Knex): Promise<void> {
@@ -26,4 +26,4 @@ export const api_keys_schema = {
       await trx.schema.dropTable(PG_TABLE_NAMES.API_KEYS);
     });
   }
-}; 
+};

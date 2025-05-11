@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+import fs from 'fs'; // Import fs for readFile
 import type { CollectionService } from '@/modules/collections/collections.service';
 import type { FileService } from '@/modules/file/file.service';
 import type { EmbeddingService } from '@/modules/file/file.embedding.service';
@@ -9,17 +10,17 @@ import {
   knowledgeQuerySchema,
   uuidParamSchema,
   collectionFileParamsSchema,
+  collectionIdOnlyParamSchema, // Added import
 } from './vectra-api.validation';
 import type {
   FileResponse,
   FileListResponseItem,
   KnowledgeQueryResponse,
 } from './vectra-api.types';
-import { AppError, FileNotFoundError, CollectionNotFoundError, ForbiddenError, CollectionConflictError } from '@/shared/errors'; // Import necessary errors
+import { AppError, FileNotFoundError, CollectionNotFoundError, ForbiddenError, CollectionConflictError } from '@/shared/errors';
 
-// Helper function to handle errors consistently
 function handleError(res: Response, error: unknown, defaultMessage: string = 'An unexpected error occurred.') {
-  console.error('API Controller Error:', error); // Log the actual error
+  console.error('API Controller Error:', error);
 
   if (error instanceof AppError) {
     res.status(error.statusCode).json({ error: error.message });
@@ -29,8 +30,7 @@ function handleError(res: Response, error: unknown, defaultMessage: string = 'An
     res.status(403).json({ error: error.message });
   } else if (error instanceof CollectionConflictError) {
     res.status(409).json({ error: error.message });
-  } else if (error instanceof Error) {
-    // Handle Zod validation errors or other generic errors
+  } else if (error instanceof Error) { // Handles Zod validation errors and other generic errors
     res.status(400).json({ error: error.message });
   }
    else {
@@ -38,17 +38,16 @@ function handleError(res: Response, error: unknown, defaultMessage: string = 'An
   }
 }
 
-// Helper to format file response, omitting sensitive fields
+// Formats file response, omitting sensitive fields like content and full path.
 function formatFileResponse(file: any): FileResponse {
   const { content, path, user_id, ...rest } = file;
   return rest;
 }
 
-// Helper to format file list response
 function formatFileListResponse(files: any[]): FileListResponseItem[] {
     return files.map(file => {
         const { content, path, user_id, metadata, ...rest } = file;
-        // Selectively include metadata fields for list view
+        // Selectively include metadata fields suitable for a list view.
         const listMetadata = {
             originalSize: metadata?.originalSize,
             mimeType: metadata?.mimeType,
@@ -70,8 +69,12 @@ export class VectraApiController {
 
   async createCollection(req: Request, res: Response): Promise<void> {
     try {
+      const apiKeyUser = req.apiKeyUser;
+      if (!apiKeyUser || !apiKeyUser.userId) {
+        return handleError(res, new AppError('User authentication failed to provide userId.', 401));
+      }
+      const userId = apiKeyUser.userId;
       const input = createCollectionSchema.parse(req.body);
-      const userId = req.apiKeyUser!.userId;
       const collection = await this.collectionService.createCollection(userId, input);
       res.status(201).json(collection);
     } catch (error) {
@@ -81,7 +84,11 @@ export class VectraApiController {
 
   async listCollections(req: Request, res: Response): Promise<void> {
     try {
-      const userId = req.apiKeyUser!.userId;
+      const apiKeyUser = req.apiKeyUser;
+      if (!apiKeyUser || !apiKeyUser.userId) {
+        return handleError(res, new AppError('User authentication failed to provide userId.', 401));
+      }
+      const userId = apiKeyUser.userId;
       const collections = await this.collectionService.getUserCollections(userId);
       res.status(200).json(collections);
     } catch (error) {
@@ -91,8 +98,12 @@ export class VectraApiController {
 
   async getCollection(req: Request, res: Response): Promise<void> {
     try {
+      const apiKeyUser = req.apiKeyUser;
+      if (!apiKeyUser || !apiKeyUser.userId) {
+        return handleError(res, new AppError('User authentication failed to provide userId.', 401));
+      }
+      const userId = apiKeyUser.userId;
       const { id: collectionId } = uuidParamSchema.parse(req.params);
-      const userId = req.apiKeyUser!.userId;
       const collection = await this.collectionService.getCollectionById(collectionId, userId);
       res.status(200).json(collection);
     } catch (error) {
@@ -102,9 +113,13 @@ export class VectraApiController {
 
   async updateCollection(req: Request, res: Response): Promise<void> {
     try {
+      const apiKeyUser = req.apiKeyUser;
+      if (!apiKeyUser || !apiKeyUser.userId) {
+        return handleError(res, new AppError('User authentication failed to provide userId.', 401));
+      }
+      const userId = apiKeyUser.userId;
       const { id: collectionId } = uuidParamSchema.parse(req.params);
       const input = updateCollectionSchema.parse(req.body);
-      const userId = req.apiKeyUser!.userId;
       const updatedCollection = await this.collectionService.updateCollection(collectionId, userId, input);
       res.status(200).json(updatedCollection);
     } catch (error) {
@@ -114,8 +129,12 @@ export class VectraApiController {
 
   async deleteCollection(req: Request, res: Response): Promise<void> {
     try {
+      const apiKeyUser = req.apiKeyUser;
+      if (!apiKeyUser || !apiKeyUser.userId) {
+        return handleError(res, new AppError('User authentication failed to provide userId.', 401));
+      }
+      const userId = apiKeyUser.userId;
       const { id: collectionId } = uuidParamSchema.parse(req.params);
-      const userId = req.apiKeyUser!.userId;
       await this.collectionService.deleteCollection(collectionId, userId);
       res.status(204).send();
     } catch (error) {
@@ -130,29 +149,59 @@ export class VectraApiController {
        return handleError(res, new AppError('No file uploaded.', 400));
      }
      try {
-       const userId = req.apiKeyUser!.userId;
-       const collectionId = req.body.collectionId as string | undefined;
+       const apiKeyUser = req.apiKeyUser;
+       if (!apiKeyUser || !apiKeyUser.userId) {
+         return handleError(res, new AppError('User authentication failed to provide userId.', 401));
+       }
+       const userId = apiKeyUser.userId;
+       let collectionId = req.body.collectionId as string | undefined;
+       console.log('[VectraApiController.uploadFile] Received collectionId from req.body:', collectionId); // DEBUG
+       console.log('[VectraApiController.uploadFile] Full req.query object:', req.query); // DEBUG entire query object
+       if (!collectionId && req.query.collectionId) {
+         collectionId = req.query.collectionId as string | undefined;
+         console.log('[VectraApiController.uploadFile] Using collectionId from req.query:', collectionId); // DEBUG
+       }
 
-       // TODO: Read file content securely if needed by service, or rely on service to read from path
-       const content = ""; // Placeholder
+       // Read content from the uploaded file path
+       const content = await fs.promises.readFile(req.file.path, 'utf-8');
 
        const dbFile = await this.fileService.upload({
          file: req.file,
-         content: content,
+         content: content, // Pass actual content
          collectionId: collectionId,
          userId: userId,
        });
 
        res.status(201).json(formatFileResponse(dbFile));
      } catch (error) {
-       // Cleanup uploaded file if service fails? Service might handle this.
+       // Multer saves to a temp path; FileService moves it.
+       // If FileService.upload fails after moving, its own cleanup should handle the newPath.
+       // If it fails before moving, or if fs.readFile fails, req.file.path might still exist.
+       // Consider adding cleanup for req.file.path here if it's not handled robustly downstream.
        handleError(res, error, 'Failed to upload file.');
+     } finally {
+       // Clean up the temporary file created by Multer, if it still exists
+       if (req.file && req.file.path) {
+         try {
+           await fs.promises.access(req.file.path); // Check if file exists
+           await fs.promises.unlink(req.file.path);
+         } catch (unlinkError: any) {
+           // Ignore ENOENT (file already deleted), log other errors
+           if (unlinkError.code !== 'ENOENT') {
+             console.error('Error cleaning up multer temp file:', unlinkError);
+           }
+         }
+       }
      }
   }
 
   async listFiles(req: Request, res: Response): Promise<void> {
     try {
-      const userId = req.apiKeyUser!.userId;
+      const apiKeyUser = req.apiKeyUser;
+      if (!apiKeyUser || !apiKeyUser.userId) {
+        return handleError(res, new AppError('User authentication failed to provide userId.', 401));
+      }
+      const userId = apiKeyUser.userId;
       // TODO: Add pagination/filtering options from query params if needed
       const { files } = await this.fileService.query(userId, {});
       res.status(200).json(formatFileListResponse(files));
@@ -163,8 +212,12 @@ export class VectraApiController {
 
   async getFile(req: Request, res: Response): Promise<void> {
     try {
+      const apiKeyUser = req.apiKeyUser;
+      if (!apiKeyUser || !apiKeyUser.userId) {
+        return handleError(res, new AppError('User authentication failed to provide userId.', 401));
+      }
+      const userId = apiKeyUser.userId;
       const { id: fileId } = uuidParamSchema.parse(req.params);
-      const userId = req.apiKeyUser!.userId;
       const file = await this.fileService.findById(userId, fileId);
       if (!file) {
         throw new FileNotFoundError(fileId);
@@ -177,8 +230,12 @@ export class VectraApiController {
 
   async deleteFile(req: Request, res: Response): Promise<void> {
     try {
+      const apiKeyUser = req.apiKeyUser;
+      if (!apiKeyUser || !apiKeyUser.userId) {
+        return handleError(res, new AppError('User authentication failed to provide userId.', 401));
+      }
+      const userId = apiKeyUser.userId;
       const { id: fileId } = uuidParamSchema.parse(req.params);
-      const userId = req.apiKeyUser!.userId;
       await this.fileService.delete(userId, fileId);
       res.status(204).send();
     } catch (error) {
@@ -190,9 +247,13 @@ export class VectraApiController {
 
   async addFileToCollection(req: Request, res: Response): Promise<void> {
     try {
-      const { collectionId } = collectionFileParamsSchema.parse(req.params);
+      const apiKeyUser = req.apiKeyUser;
+      if (!apiKeyUser || !apiKeyUser.userId) {
+        return handleError(res, new AppError('User authentication failed to provide userId.', 401));
+      }
+      const userId = apiKeyUser.userId;
+      const { collectionId } = collectionIdOnlyParamSchema.parse(req.params); // Changed schema
       const { fileId } = addFileToCollectionSchema.parse(req.body);
-      const userId = req.apiKeyUser!.userId;
       await this.collectionService.addFileToCollection(userId, collectionId, fileId);
       res.status(200).json({ message: 'File added to collection successfully.' });
     } catch (error) {
@@ -202,8 +263,12 @@ export class VectraApiController {
 
   async removeFileFromCollection(req: Request, res: Response): Promise<void> {
     try {
+      const apiKeyUser = req.apiKeyUser;
+      if (!apiKeyUser || !apiKeyUser.userId) {
+        return handleError(res, new AppError('User authentication failed to provide userId.', 401));
+      }
+      const userId = apiKeyUser.userId;
       const { collectionId, fileId } = collectionFileParamsSchema.parse(req.params);
-      const userId = req.apiKeyUser!.userId;
       await this.collectionService.removeFileFromCollection(userId, collectionId, fileId);
       res.status(200).json({ message: 'File removed from collection successfully.' }); // 200 or 204? 200 indicates success message.
     } catch (error) {
@@ -213,8 +278,12 @@ export class VectraApiController {
 
   async listFilesInCollection(req: Request, res: Response): Promise<void> {
     try {
+      const apiKeyUser = req.apiKeyUser;
+      if (!apiKeyUser || !apiKeyUser.userId) {
+        return handleError(res, new AppError('User authentication failed to provide userId.', 401));
+      }
+      const userId = apiKeyUser.userId;
       const { id: collectionId } = uuidParamSchema.parse(req.params);
-      const userId = req.apiKeyUser!.userId;
       const collectionWithFiles = await this.collectionService.getFilesInCollection(userId, collectionId);
       // TODO: Files within this response might need formatting similar to listFiles
       res.status(200).json(collectionWithFiles);
@@ -227,8 +296,12 @@ export class VectraApiController {
 
   async queryKnowledge(req: Request, res: Response): Promise<void> {
     try {
+      const apiKeyUser = req.apiKeyUser;
+      if (!apiKeyUser || !apiKeyUser.userId) {
+        return handleError(res, new AppError('User authentication failed to provide userId.', 401));
+      }
+      const userId = apiKeyUser.userId;
       const input = knowledgeQuerySchema.parse(req.body);
-      const userId = req.apiKeyUser!.userId;
 
       const results = await this.embeddingService.queryEmbeddings({
         userId: userId,

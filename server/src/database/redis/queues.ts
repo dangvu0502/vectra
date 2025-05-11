@@ -1,61 +1,50 @@
 import { Queue } from 'bullmq';
-import { env } from '@/config/environment'; // Need env for Redis URL
-import type { ConnectionOptions } from 'bullmq'; // Use type-only import
-// import Redis from 'ioredis'; // Remove unused ioredis import
+import { env } from '@/config/environment';
+import type { ConnectionOptions } from 'bullmq';
 
-// Define the name for the LLM processing queue
-export const LLM_PROCESSING_QUEUE_NAME = 'llm-processing'; // Export the name
+export const LLM_PROCESSING_QUEUE_NAME = 'llm-processing';
 
-// Define the structure of the job data (payload)
-// This can be expanded as needed for different LLM tasks
+// Defines the structure of the job data (payload) for LLM processing tasks.
 export interface LlmJobData {
-  jobType: 'relationshipExtraction' | 'entityExtraction'; // Differentiate tasks
-  chunkId: string; // The ID of the chunk node in ArangoDB
-  chunkText: string; // The text content of the chunk
-  // Add other relevant data as needed, e.g., documentId, relatedChunkIds
+  jobType: 'relationshipExtraction' | 'entityExtraction'; // Type of LLM task
+  chunkId: string; // ID of the ArangoDB chunk node
+  chunkText: string; // Text content of the chunk
+  // Consider adding documentId, relatedChunkIds, etc. as needed.
 }
 
-// Parse Redis URL to create ConnectionOptions for BullMQ
-// BullMQ's ConnectionOptions align closely with ioredis options
-export const getRedisConnectionOptions = (): ConnectionOptions => { // Export the function
+// Parses Redis URL to ConnectionOptions for BullMQ.
+// BullMQ's ConnectionOptions are similar to ioredis options.
+export const getRedisConnectionOptions = (): ConnectionOptions => {
   try {
     const url = new URL(env.REDIS_URL);
     return {
       host: url.hostname,
       port: parseInt(url.port, 10),
-      // Add password, db number etc. if present in the URL or needed
-      // password: url.password || undefined,
-      // db: url.pathname ? parseInt(url.pathname.slice(1), 10) : 0,
+      // TODO: Consider parsing password and db number from REDIS_URL if present.
     };
   } catch (error) {
     console.error("Invalid REDIS_URL format:", env.REDIS_URL, error);
-    // Fallback or throw error depending on desired behavior
-    return { host: 'localhost', port: 6379 }; // Default fallback
+    // Default fallback if REDIS_URL is invalid.
+    return { host: 'localhost', port: 6379 };
   }
 };
 
-
-// Create the BullMQ queue instance
-// Pass the connection options directly
 export const llmProcessingQueue = new Queue<LlmJobData>(LLM_PROCESSING_QUEUE_NAME, {
   connection: getRedisConnectionOptions(),
   defaultJobOptions: {
-    attempts: 3, // Retry failed jobs up to 3 times
+    attempts: 3, // Max 3 retry attempts for failed jobs
     backoff: {
       type: 'exponential',
-      delay: 1000, // Exponential backoff starting at 1 second
+      delay: 1000, // Initial backoff delay: 1 second
     },
-    removeOnComplete: true, // Keep queue clean by removing completed jobs
-    removeOnFail: 1000,    // Keep failed jobs for a while (e.g., 1000 jobs) for inspection
+    removeOnComplete: true,
+    removeOnFail: 1000,    // Keep the last 1000 failed jobs for inspection
   },
 });
 
-console.log(`BullMQ queue "${LLM_PROCESSING_QUEUE_NAME}" initialized.`);
+// console.log(`BullMQ queue "${LLM_PROCESSING_QUEUE_NAME}" initialized.`); // Initialization logged in bootstrap
 
 // Optional: Add listeners for queue events if needed for monitoring/logging
 llmProcessingQueue.on('error', (error) => {
   console.error(`Error in BullMQ queue "${LLM_PROCESSING_QUEUE_NAME}":`, error);
 });
-
-// Graceful shutdown is now handled centrally in bootstrap.ts
-// Remove signal handlers (SIGINT, SIGTERM) and shutdownQueue function

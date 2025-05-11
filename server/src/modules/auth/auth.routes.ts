@@ -9,22 +9,19 @@ const router = express.Router();
 router.get(
   "/google",
   passport.authenticate("google", {
-    scope: ["profile", "email"],
-    prompt: "select_account",
+    scope: ["profile", "email"], // Request access to profile and email
+    prompt: "select_account", // Prompt user to select account if multiple are available
   })
 );
 
 // 2. Google OAuth Callback
-//    Handles both success and failure scenarios based on passport configuration
 router.get(
   "/google/callback",
-  passport.authenticate("google", {
-    failureMessage: true,
+  passport.authenticate("google", { // Handles success/failure based on passport strategy
+    failureMessage: true, // Enables failure messages to be set (e.g., for req.flash)
   }),
-  (req, res) => {
-    // This middleware runs only on successful authentication
-    // req.user is populated by passport
-    googleCallbackSuccess(req, res);
+  (req, res) => { // This handler is invoked only on successful authentication
+    googleCallbackSuccess(req, res); // req.user is populated by Passport
   }
   // Note: Passport's default behavior on failure is to call next(err) or redirect.
   // If you need custom failure handling *within the route*, you might need a more complex setup

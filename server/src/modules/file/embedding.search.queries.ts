@@ -1,21 +1,19 @@
-import { PG_TABLE_NAMES } from '@/database/constants'; // Import PG constants
-// Removed incorrect import: import { COLLECTION_FILES_TABLE, TEXT_EMBEDDINGS_TABLE } from '@/config/constants';
+import { PG_TABLE_NAMES } from '@/database/constants';
 import type { Knex } from 'knex';
-import type { MetadataFilter } from './file.embedding.queries'; // Import shared type
+import type { MetadataFilter } from './file.embedding.queries';
 
-// Type for the result items (consistent with the original file)
 type SearchResultItem = {
   vector_id: string;
   file_id: string;
   metadata: Record<string, any>;
-  distance?: number; // Cosine distance for vector search
-  rank?: number;     // FTS rank for keyword search
+  distance?: number;
+  rank?: number;
 };
 
 /**
  * Performs vector similarity search on text embeddings.
  */
-export const findSimilarEmbeddings = async ( // Renamed from _findSimilarEmbeddingsInternal
+export const findSimilarEmbeddings = async (
   dbOrTrx: Knex | Knex.Transaction,
   userId: string,
   embedding: number[],
@@ -24,7 +22,7 @@ export const findSimilarEmbeddings = async ( // Renamed from _findSimilarEmbeddi
   includeMetadataFilters?: MetadataFilter[],
   excludeMetadataFilters?: MetadataFilter[],
   maxDistance?: number
-): Promise<Array<SearchResultItem & { distance: number }>> => { // Ensure distance is non-optional here
+): Promise<Array<SearchResultItem & { distance: number }>> => {
   const queryEmbeddingString = JSON.stringify(embedding);
 
   let query = dbOrTrx(`${PG_TABLE_NAMES.TEXT_EMBEDDINGS} as te`)
@@ -66,7 +64,6 @@ export const findSimilarEmbeddings = async ( // Renamed from _findSimilarEmbeddi
 
   query = query.orderBy('distance', 'asc').limit(limit);
 
-  // Explicitly cast the result type if needed, or ensure the select matches
   const results = await query;
   return results as Array<SearchResultItem & { distance: number }>;
 };
@@ -75,14 +72,14 @@ export const findSimilarEmbeddings = async ( // Renamed from _findSimilarEmbeddi
 /**
  * Performs Full-Text Search (FTS) on text embeddings.
  */
-export const findKeywordMatches = async ( // Renamed from _findKeywordMatchesInternal
+export const findKeywordMatches = async (
   dbOrTrx: Knex | Knex.Transaction,
   userId: string,
   queryText: string,
   limit: number,
   collectionId?: string,
   ftsConfig: string = 'english'
-): Promise<Array<SearchResultItem & { rank: number }>> => { // Ensure rank is non-optional here
+): Promise<Array<SearchResultItem & { rank: number }>> => {
   const tsQuery = dbOrTrx.raw(`websearch_to_tsquery(?, ?)`, [ftsConfig, queryText]);
 
   let query = dbOrTrx(`${PG_TABLE_NAMES.TEXT_EMBEDDINGS} as te`)
@@ -103,7 +100,6 @@ export const findKeywordMatches = async ( // Renamed from _findKeywordMatchesInt
 
   query = query.orderBy('rank', 'desc').limit(limit);
 
-  // Explicitly cast the result type if needed, or ensure the select matches
   const results = await query;
   return results as Array<SearchResultItem & { rank: number }>;
 };

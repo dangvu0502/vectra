@@ -1,14 +1,14 @@
 import { aql } from 'arangojs';
-// Removed ArrayCursor type import as it seems problematic
 import path from 'path';
-// Removed duplicate: import { aql } from 'arangojs';
-import { arangoDbClient, getEdgesCollection, getNodesCollection } from '../../database/arangodb/client.js'; 
+import { arangoDbClient, getEdgesCollection, getNodesCollection } from '../../database/arangodb/client';
 import type { File as DbFileType } from '../file/file.schema';
-import { llmProcessingQueue } from '@/database/redis/queues'; // Updated path using alias
-import type { LlmJobData } from '@/database/redis/queues'; // Updated path using alias
-import { DocumentNotFoundError } from '@/shared/errors'; // Removed .js extension
+import { llmProcessingQueue } from '@/database/redis/queues';
+import type { LlmJobData } from '@/database/redis/queues';
+import { DocumentNotFoundError } from '@/shared/errors';
 
-// Define types for clarity
+// TODO: Refactor complex methods (upsertGraphDataForFile, performGraphTraversal) for clarity.
+// TODO: Replace console.log/error with a proper, configurable logger.
+
 type ChunkMetadata = Record<string, any> & {
   h1?: string;
   h2?: string;
@@ -21,7 +21,7 @@ type ChunkMetadata = Record<string, any> & {
 
 type ChunkData = {
   vectorId: string;
-  metadata: ChunkMetadata; // Use the more specific type
+  metadata: ChunkMetadata;
 };
 
 type GraphTraversalDirection = 'any' | 'inbound' | 'outbound';
@@ -42,11 +42,11 @@ type GraphTraversalResultItem = {
 export class ArangoDbService {
   private static instance: ArangoDbService | null = null;
   private nodesCollection;
-  private edgesCollection; // Add edges collection
+  private edgesCollection;
 
   private constructor() {
     this.nodesCollection = getNodesCollection();
-    this.edgesCollection = getEdgesCollection(); // Initialize edges collection
+    this.edgesCollection = getEdgesCollection();
   }
 
   static getInstance(): ArangoDbService {
@@ -81,7 +81,6 @@ export class ArangoDbService {
         },
         updatedAt: now,
       };
-      // Use UPSERT AQL command for atomicity and clarity
       const upsertDocQuery = aql`
         UPSERT { _key: ${documentNodeKey} }
         INSERT {
@@ -101,24 +100,16 @@ export class ArangoDbService {
         IN ${this.nodesCollection}
         RETURN NEW
       `;
-      // Execute the query directly
       const docResult = await arangoDbClient.query(upsertDocQuery);
       const upsertedDoc = await docResult.all();
-      if (upsertedDoc && upsertedDoc.length > 0) { // Check if NEW was returned
-        console.log(`ArangoDB: Upserted document node ${documentNodeKey}`);
-      } else {
-         console.error(`ArangoDB: FAILED to upsert document node ${documentNodeKey}`);
-         // Consider throwing an error here if doc upsert is critical
-         // Let's ensure it throws if the document node fails, as it's fundamental
-         if (!upsertedDoc || upsertedDoc.length === 0) {
-             throw new Error(`ArangoDB: FAILED to upsert document node ${documentNodeKey}`);
-         }
+      if (!upsertedDoc || upsertedDoc.length === 0) {
+         throw new Error(`ArangoDB: FAILED to upsert document node ${documentNodeKey}`);
       }
+      console.log(`ArangoDB: Upserted document node ${documentNodeKey}`);
 
 
-      // 2. Delete Orphaned Chunk Nodes/Edges (Reinstated)
+      // 2. Delete Orphaned Chunk Nodes/Edges
       const newChunkKeys = new Set(insertedChunkData.map(c => `chunk_${c.vectorId}`));
-      // Use direct interpolation for collection names here as well for consistency
       const deleteOrphansQuery = aql`
         LET doc = DOCUMENT(${this.nodesCollection}, ${documentNodeKey})
         FILTER doc != null
@@ -137,7 +128,6 @@ export class ArangoDbService {
           REMOVE { _key: orphan.nodeKey } IN ${this.nodesCollection} OPTIONS { ignoreErrors: true }
         RETURN LENGTH(orphans)
       `;
-      // Execute directly
       const deleteCursor = await arangoDbClient.query(deleteOrphansQuery);
       const deletedCount = (await deleteCursor.all())[0] || 0;
       if (deletedCount > 0) {
@@ -147,43 +137,38 @@ export class ArangoDbService {
       // 3. Process Headers and Create Structural Nodes/Edges
       const headerHierarchy: Record<string, { nodeKey: string; parentKey: string | null; level: number; title: string }> = {};
       const sectionUpsertPromises: Promise<any>[] = [];
-      let lastHeaderKeys: (string | null)[] = [null, null, null, null, null, null]; // Track last seen header at each level
+      let lastHeaderKeys: (string | null)[] = [null, null, null, null, null, null];
 
-      // First pass: Identify unique headers and their hierarchy
       insertedChunkData.forEach(chunk => {
-        let currentParentKey: string | null = documentNodeKey; // Start with document as parent
+        let currentParentKey: string | null = documentNodeKey;
         for (let level = 1; level <= 6; level++) {
           const headerKey = `h${level}` as keyof ChunkMetadata;
           const headerTitle = chunk.metadata[headerKey];
 
           if (headerTitle) {
-            // Normalize title for key generation (simple example)
             const normalizedTitle = headerTitle.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase().substring(0, 50);
             const sectionNodeKey = `section_l${level}_${documentNodeKey}_${normalizedTitle}`;
 
             if (!headerHierarchy[sectionNodeKey]) {
-               const parentNodeKey = lastHeaderKeys[level - 1] || documentNodeKey; // Link to previous level's header or doc
+               const parentNodeKey = lastHeaderKeys[level - 1] || documentNodeKey;
                headerHierarchy[sectionNodeKey] = {
                  nodeKey: sectionNodeKey,
                  parentKey: parentNodeKey,
                  level: level,
                  title: headerTitle
                };
-               lastHeaderKeys[level] = sectionNodeKey; // Update last seen key for this level
-               // Reset lower levels
+               lastHeaderKeys[level] = sectionNodeKey;
                for (let j = level + 1; j <= 6; j++) {
                    lastHeaderKeys[j] = null;
                }
             }
-             currentParentKey = sectionNodeKey; // This header becomes the parent for subsequent levels/chunks under it
+             currentParentKey = sectionNodeKey;
           } else {
-            // If no header at this level, subsequent levels link to the last known parent
              lastHeaderKeys[level] = currentParentKey;
           }
         }
       });
 
-       // Second pass: Upsert section nodes and 'has_section' edges
        for (const sectionKey in headerHierarchy) {
            const sectionInfo = headerHierarchy[sectionKey];
            const sectionNodeData = {
@@ -214,7 +199,7 @@ export class ArangoDbService {
                    ? `${this.nodesCollection.name}/${sectionInfo.parentKey}`
                    : `${this.nodesCollection.name}/${sectionInfo.parentKey}`; // Assuming sections are also in nodesCollection
                const childNodeId = `${this.nodesCollection.name}/${sectionKey}`;
-               const relationshipType = sectionInfo.parentKey.startsWith('doc_') ? 'has_section' : 'has_subsection'; // Or just use 'has_child' ? Let's stick to plan for now.
+               const relationshipType = sectionInfo.parentKey.startsWith('doc_') ? 'has_section' : 'has_subsection';
                const structEdgeKey = `edge_${sectionInfo.parentKey}_${relationshipType}_${sectionKey}`;
                const structEdgeData = { _from: parentNodeId, _to: childNodeId, relationship_type: relationshipType, updatedAt: now };
 
@@ -233,7 +218,6 @@ export class ArangoDbService {
                );
            }
        }
-       // Wait for all section/structural edge upserts before proceeding to chunks
        await Promise.all(sectionUpsertPromises);
        console.log(`ArangoDB: Completed upserting ${Object.keys(headerHierarchy).length} section nodes and structural edges for file ${file.id}`);
 
@@ -244,15 +228,14 @@ export class ArangoDbService {
       for (const chunkData of insertedChunkData) {
         const chunkNodeKey = `chunk_${chunkData.vectorId}`;
         const chunkNodeData = {
-          vectra_id: chunkData.vectorId, // Keep original vector ID reference
-          node_type: 'chunk', // Keep node type as chunk
-          name: `Chunk of ${file.filename}`, // Keep original name or derive from section?
-          metadata: chunkData.metadata, // Includes original metadata + headers
-          text_snippet: chunkData.metadata?.chunk_text?.substring(0, 100) || '', // Keep snippet
+          vectra_id: chunkData.vectorId,
+          node_type: 'chunk',
+          name: `Chunk of ${file.filename}`,
+          metadata: chunkData.metadata,
+          text_snippet: chunkData.metadata?.chunk_text?.substring(0, 100) || '',
           updatedAt: now,
         };
 
-        // Determine parent section node for this chunk
         let parentSectionKey: string | null = null;
         for (let level = 6; level >= 1; level--) {
             const headerKey = `h${level}` as keyof ChunkMetadata;
@@ -260,15 +243,13 @@ export class ArangoDbService {
             if (headerTitle) {
                 const normalizedTitle = headerTitle.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase().substring(0, 50);
                 parentSectionKey = `section_l${level}_${documentNodeKey}_${normalizedTitle}`;
-                break; // Found the most specific header
+                break;
             }
         }
-        // Fallback to document node if no headers found for chunk (should be rare with markdown strategy)
         const parentNodeKey = parentSectionKey || documentNodeKey;
         const parentNodeId = `${this.nodesCollection.name}/${parentNodeKey}`;
         const chunkNodeId = `${this.nodesCollection.name}/${chunkNodeKey}`;
 
-        // Define 'contains' edge from section/document to chunk
         const containsEdgeKey = `edge_${parentNodeKey}_contains_${chunkNodeKey}`;
         const containsEdgeData = {
           _from: parentNodeId,
@@ -277,8 +258,6 @@ export class ArangoDbService {
           updatedAt: now,
         };
 
-
-        // Upsert Chunk Node (same as before)
          const upsertChunkQuery = aql`
            UPSERT { _key: ${chunkNodeKey} }
            INSERT {
@@ -291,7 +270,6 @@ export class ArangoDbService {
            IN ${this.nodesCollection}
            RETURN NEW`;
 
-        // Chain the 'contains' edge upsert and job enqueues after successful chunk upsert
         const chunkProcessingPromise = arangoDbClient.query(upsertChunkQuery)
           .then(async (cursor) => {
             const upsertedChunk = await cursor.next();
@@ -300,7 +278,6 @@ export class ArangoDbService {
             }
             console.log(`ArangoDB: Upserted chunk node ${chunkNodeKey}`);
 
-            // Upsert the 'contains' edge from section/document to chunk
             const upsertContainsEdgeQuery = aql`
               UPSERT { _key: ${containsEdgeKey} }
               INSERT {
@@ -312,10 +289,8 @@ export class ArangoDbService {
             await arangoDbClient.query(upsertContainsEdgeQuery);
             console.log(`ArangoDB: Upserted 'contains' edge ${containsEdgeKey}`);
 
-            // --- Enqueue LLM Jobs (Relationship + Entity) ---
             const textForLlm = chunkNodeData.metadata?.chunk_text || chunkNodeData.text_snippet;
             if (textForLlm) {
-              // Relationship Job
               const relJobData: LlmJobData = {
                 jobType: 'relationshipExtraction',
                 chunkId: chunkNodeKey,
@@ -328,7 +303,6 @@ export class ArangoDbService {
                 console.error(`ArangoDB: FAILED to enqueue relationship job for chunk ${chunkNodeKey}`, queueError);
               }
 
-              // Entity Job
               const entityJobData: LlmJobData = {
                 jobType: 'entityExtraction',
                 chunkId: chunkNodeKey,
@@ -343,31 +317,27 @@ export class ArangoDbService {
             } else {
                console.warn(`ArangoDB: No text found for chunk ${chunkNodeKey}, skipping LLM job enqueues.`);
             }
-            // --- End Enqueue ---
 
           })
           .catch((err: any) => {
             console.error(`ArangoDB: FAILED operation for chunk ${chunkNodeKey} or its edge/jobs`, err);
-            throw err; // Propagate error to Promise.all
+            throw err;
           });
 
-        chunkUpsertPromises.push(chunkProcessingPromise); // Add chunk processing promise to array
+        chunkUpsertPromises.push(chunkProcessingPromise);
 
-      } // End chunk loop
+      }
 
-      // Wait for all chunk/edge/job processing and log success/failure
       try {
-          await Promise.all(chunkUpsertPromises); // Wait for all chunk-related promises
-          console.log(`ArangoDB: Successfully completed processing for ${insertedChunkData.length} chunks (including edge creation and job enqueues) for file ${file.id}`);
+          await Promise.all(chunkUpsertPromises);
+          console.log(`ArangoDB: Successfully completed processing for ${insertedChunkData.length} chunks for file ${file.id}`);
       } catch(promiseAllError) {
           console.error(`ArangoDB: At least one chunk processing operation failed for file ${file.id}`, promiseAllError);
-          throw promiseAllError; // Ensure the overall method fails if any part fails
+          throw promiseAllError;
       }
-      // Note: Verification step was removed for debugging, consider re-adding if needed
 
     } catch (error) {
       console.error(`ArangoDB Error in upsertGraphDataForFile for file ${file.id}: ${error instanceof Error ? error.message : error}`);
-      // Optionally re-throw or handle more gracefully
       throw error;
     }
   }
@@ -405,53 +375,45 @@ export class ArangoDbService {
       }
     } catch (error) {
       console.error(`ArangoDB Error deleting graph data for file ${fileId}: ${error instanceof Error ? error.message : error}`);
-      // Optionally re-throw or handle more gracefully
       throw error;
     }
   }
 
   async createEdge(edgeData: { _from: string; _to: string; [key: string]: any }): Promise<any> {
     try {
-      // Add createdAt/updatedAt timestamps if not provided
       const now = new Date().toISOString();
       const dataToInsert = {
         ...edgeData,
         createdAt: edgeData.createdAt || now,
         updatedAt: edgeData.updatedAt || now,
       };
-      // Use insert, assuming edges are unique based on _from, _to, and type,
-      // or handle potential duplicates if needed (e.g., UPSERT or check first)
       const result = await this.edgesCollection.save(dataToInsert, { returnNew: true });
       console.log(`ArangoDB: Created edge from ${edgeData._from} to ${edgeData._to} with type ${edgeData.type || 'unknown'}`);
       return result.new;
     } catch (error) {
       console.error(`ArangoDB Error creating edge: ${error instanceof Error ? error.message : error}`, edgeData);
-      // Decide on error handling: re-throw, return null, etc.
-      throw error; // Re-throw for the worker to potentially handle retries
+      throw error;
     }
   }
 
   // --- Graph Query Methods ---
 
   async performGraphTraversal(params: GraphTraversalParams): Promise<GraphTraversalResultItem[]> {
-    // Destructure the new parameter with a default value
     const { startNodeVectraIds, graphDepth, graphRelationshipTypes, graphTraversalDirection = 'any' } = params;
 
     if (!startNodeVectraIds || startNodeVectraIds.length === 0) {
       return [];
     }
-    console.log(`DEBUG: performGraphTraversal received vector IDs: ${JSON.stringify(startNodeVectraIds)}`); // Log received IDs
+    console.log(`DEBUG: performGraphTraversal received vector IDs: ${JSON.stringify(startNodeVectraIds)}`);
 
     try {
-      // Define bind variables (collections are handled implicitly by aql tag)
       const bindVars = {
         nodeVectraIds: startNodeVectraIds,
         graphDepth: graphDepth ?? 1,
         graphRelationshipTypes: graphRelationshipTypes && graphRelationshipTypes.length > 0 ? graphRelationshipTypes : null,
       };
 
-      // Select the correct AQL query object based on direction
-      let query: ReturnType<typeof aql>; // Explicitly type query
+      let query: ReturnType<typeof aql>;
       if (graphTraversalDirection === 'inbound') {
         query = aql`
           LET startNodes = (FOR node IN ${this.nodesCollection} FILTER node.node_type == 'chunk' AND node.vectra_id IN @nodeVectraIds RETURN node)
@@ -493,53 +455,33 @@ export class ArangoDbService {
         `;
       }
 
-      // Merge our explicit bind variables into the query object's bindVars
       query.bindVars = { ...query.bindVars, ...bindVars };
 
-      // Execute the query using the combined query object
-      const cursor = await arangoDbClient.query(query); // Pass only the query object
-      // Explicitly cast the result to the expected type
+      const cursor = await arangoDbClient.query(query);
       const results = (await cursor.all()) as GraphTraversalResultItem[];
       console.log(`DEBUG: performGraphTraversal (direction: ${graphTraversalDirection}) found ${results.length} items matching input IDs.`);
       return results;
 
     } catch (error) {
       console.error(`ArangoDB Error during graph traversal: ${error instanceof Error ? error.message : error}`);
-      // Return empty array or re-throw depending on desired error handling
-      return [];
+      return []; // Return empty on error for now
     }
   }
 
-  // --- Direct Node Access ---
-
   async getNodeByKey(nodeKey: string): Promise<any> {
     try {
-      // Use AQL for more flexibility if needed later, or direct document fetch
-      // const query = aql`
-      //   FOR node IN ${this.nodesCollection}
-      //     FILTER node._key == ${nodeKey}
-      //     LIMIT 1
-      //     RETURN node
-      // `;
-      // const cursor = await arangoDbClient.query(query);
-      // const node = await cursor.next();
-
-      // Direct fetch is simpler if just getting by key
       const node = await this.nodesCollection.document(nodeKey);
-
-      // Note: arangojs driver throws an error if document not found, so this check might be redundant
-      // but kept for explicit clarity before the catch block handles the driver's error.
-      if (!node) {
-         throw new DocumentNotFoundError(`ArangoDB node with key "${nodeKey}" not found.`); // Corrected error type here
-      }
+      // arangojs driver throws an error if document not found, which is caught below.
+      // This explicit check is redundant if the catch block correctly identifies ArangoDB's not_found error.
+      // if (!node) {
+      //    throw new DocumentNotFoundError(`ArangoDB node with key "${nodeKey}" not found.`);
+      // }
       return node;
     } catch (error: any) {
-      // Handle ArangoDB's specific "document not found" error
       if (error.isArangoError && error.errorNum === 1202) { // 1202 is ERROR_ARANGO_DOCUMENT_NOT_FOUND
-         throw new DocumentNotFoundError(`ArangoDB node with key "${nodeKey}" not found.`); // Use DocumentNotFoundError
+         throw new DocumentNotFoundError(`ArangoDB node with key "${nodeKey}" not found.`);
       }
       console.error(`Error fetching ArangoDB node ${nodeKey}:`, error);
-      // Re-throw other errors or wrap them
       throw new Error(`Failed to fetch ArangoDB node: ${error.message || 'Unknown error'}`);
     }
   }

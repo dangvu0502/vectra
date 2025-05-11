@@ -1,21 +1,14 @@
-// Removed direct Ollama imports
-import { MDocument } from '@mastra/rag'; // Import rerank
+import { MDocument } from '@mastra/rag';
 import { embedMany } from 'ai';
 import type { Knex } from 'knex';
-// Removed direct ollama provider import
-import { languageModel, embeddingModel } from '@/connectors/llm/adapter'; // Updated path
-// Removed aql, arangoDbClient, getEdgesCollection, getNodesCollection imports
+import { languageModel, embeddingModel } from '@/connectors/llm/adapter';
 import path from 'path';
-import { arangoDbService } from '../arangodb/arangodb.service.js'; // Import the ArangoDB service
-// Import query strategies (performReranking removed as it's commented out)
+import { arangoDbService } from '../arangodb/arangodb.service';
 import { applyRRF, performKeywordSearch, performVectorSearch } from './embedding.query.strategies';
-import { getChunkingParams } from './chunking.strategies.js'; // Import chunking strategy logic
+import { getChunkingParams } from './chunking.strategies';
 import { createEmbeddingQueryRunner, type MetadataFilter } from './file.embedding.queries';
 import type { File as DbFileType } from './file.schema';
-// Removed MDocument and rerank imports as they are no longer directly used here
-// Removed duplicate imports below
 
-// Interface defining the service's responsibilities
 export interface IEmbeddingService {
   processFile(file: DbFileType): Promise<void>;
   deleteFileEmbeddings(fileId: string): Promise<void>;
@@ -52,11 +45,11 @@ export class EmbeddingService implements IEmbeddingService {
   private static instance: EmbeddingService | null = null;
   private readonly db: Knex;
 
-  private constructor(db: Knex) { // Removed options from constructor
+  private constructor(db: Knex) {
     this.db = db;
   }
 
-  static getInstance(db: Knex): EmbeddingService { // Removed options
+  static getInstance(db: Knex): EmbeddingService {
     if (!EmbeddingService.instance) {
       EmbeddingService.instance = new EmbeddingService(db);
     }
@@ -67,41 +60,32 @@ export class EmbeddingService implements IEmbeddingService {
     EmbeddingService.instance = null;
   }
 
-  // Add method to expose Knex instance if needed
   getDbInstance(): Knex {
     return this.db;
   }
 
   async processFile(file: DbFileType): Promise<void> {
     try {
-      // 1. Determine File Type
       const fileType = path.extname(file.filename).toLowerCase();
-
-      // 2. Prepare Initial Metadata
       const initialMetadata = {
         user_id: file.user_id,
         file_id: file.id,
         filename: file.filename,
         created_at: file.created_at.toISOString(),
-        file_type: fileType, // Add file type here
+        file_type: fileType,
         ...(file.metadata || {}),
       };
       const doc = MDocument.fromText(file.content, initialMetadata);
 
-      // 3. Determine Chunking Strategy using the extracted function
-      // Pass defaultBaseChunkParams or customize if needed
-      const chunkParams = getChunkingParams(fileType /*, optionalCustomBaseParams */);
+      const chunkParams = getChunkingParams(fileType);
       console.log(`Using chunking strategy: ${chunkParams.strategy} for file ${file.id}`);
 
-
-      // 4. Chunk the document with dynamic options
       let chunks: Array<{ text: string; metadata?: Record<string, any> }> = await doc.chunk(chunkParams);
       if (!chunks || chunks.length === 0) {
         console.warn(`No chunks generated for file ${file.id} using strategy ${chunkParams.strategy}`);
         return;
       }
 
-      // 5. Generate embeddings using embedMany from 'ai'
       const texts = chunks.map(chunk => chunk.text);
       const { embeddings } = await embedMany({
         model: embeddingModel,
@@ -112,30 +96,21 @@ export class EmbeddingService implements IEmbeddingService {
         throw new Error(`Mismatch between chunks (${chunks.length}) and embeddings (${embeddings?.length || 0}) count.`);
       }
 
-      // Declare insertedChunkData outside the transaction scope
       let insertedChunkData: { vectorId: string; metadata: Record<string, any> }[] = [];
 
-      // Begin transaction for database operations
       await this.db.transaction(async (trx) => {
-        // Create a query runner scoped to this transaction
         const txRunner = createEmbeddingQueryRunner(trx);
-
-        // Insert embeddings using the transaction runner
         insertedChunkData = await txRunner.insertTextEmbeddings(file, chunks, embeddings);
-
-      }); // End Knex transaction
+      });
 
       // --- ArangoDB Graph Update (Post-Transaction) ---
-      // Delegate graph update logic to ArangoDbService
       try {
         await arangoDbService.upsertGraphDataForFile(file, insertedChunkData);
-        // Removed debug call to findNodeByGeneratedKey_DEBUG
-        // TODO: Implement asynchronous background job for automated relationship extraction (consider moving trigger logic here or keeping in ArangoDbService)
+        // TODO: Implement asynchronous background job for automated relationship extraction.
       } catch (arangoError) {
-        // Error is already logged within the service method.
-        // Re-throw the error to ensure the overall processFile operation fails if the graph update fails.
-        console.error(`Error during ArangoDB graph update triggered by processFile for file ${file.id}. Re-throwing error.`);
-        throw arangoError; // Re-throw the original error
+        // Error is logged in arangoDbService. Re-throw to fail processFile if graph update fails.
+        console.error(`Error during ArangoDB graph update for file ${file.id}. Re-throwing.`);
+        throw arangoError;
       }
       // --- End ArangoDB Graph Update ---
 

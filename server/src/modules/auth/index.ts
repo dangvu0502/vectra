@@ -1,5 +1,5 @@
 import { authRoutes } from './auth.routes';
-import { passport } from './passport.config'; // Export passport for app initialization
+import { passport } from './passport.config'; // passport instance is needed by the main app for initialization
 
 export { authRoutes, passport };
 

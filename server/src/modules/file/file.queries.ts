@@ -1,10 +1,8 @@
-import { db } from "@/database/connection";
-// Removed duplicate: import { db } from '@/database/connection';
-import { PG_TABLE_NAMES } from "@/database/constants"; // Import PG constants
+import { db } from "@/database/postgres/connection";
+import { PG_TABLE_NAMES } from "@/database/constants";
 import type { Knex } from "knex";
-import type { File as DbFileType, QueryOptions } from "./file.schema"; // Keep using types from model
-import { fileSchema, querySchema } from "./file.schema"; // Import necessary schemas
-// Removed unused import: import { FILES_TABLE } from '@/config/constants';
+import type { File as DbFileType, QueryOptions } from "./file.schema";
+import { fileSchema, querySchema } from "./file.schema";
 import { FileNotFoundError } from '@/shared/errors';
 
 export class FileQueries {
@@ -44,14 +42,12 @@ export class FileQueries {
       });
     }
 
-    // Get total count
     const countResult = await countQueryBuilder
       .where('user_id', userId)
       .count('* as count')
       .first();
     const total = countResult ? parseInt(countResult.count as string, 10) : 0;
 
-    // Get paginated results
     const dbFiles = await queryBuilder
       .where('user_id', userId)
       .orderBy(sortBy, sortOrder)
