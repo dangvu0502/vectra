@@ -29,7 +29,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: ./server
-          file: ./server/Dockerfile.prod
+          file: ./server/Dockerfile
           push: true
           tags: ${{ env.DOCKER_IMAGE_NAME }}:latest
           cache-from: |
